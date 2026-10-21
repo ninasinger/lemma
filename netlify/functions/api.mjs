@@ -2,6 +2,9 @@
 import { getStore } from '@netlify/blobs';
 import { netlifyHandler } from '../../lib/netlify.js';
 
-export default netlifyHandler(() => getStore({ name: 'lemma', consistency: 'strong' }));
+export default netlifyHandler(
+  (name) => getStore({ name, consistency: 'strong' }),
+  (key) => Netlify.env.get(key),
+);
 
 export const config = { path: '/api/*' };
