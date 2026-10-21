@@ -99,13 +99,65 @@ test('a stale browser tab cannot erase finished lessons', async () => {
   }
 });
 
-test('reset clears progress but keeps the sound setting', async () => {
+const cardState = (last, extra = {}) => ({ phase: 'review', step: 0, ivl: 3, ease: 2.5, reps: 2, lapses: 0, due: last + 3 * 86_400_000, last, intro: last - 60_000, ...extra });
+
+test('review card states are saved and survive a restart', async () => {
+  const first = await start();
+  await first.call('POST', '/api/login', { username: USER, password: PASSWORD });
+  const put = await first.call('PUT', '/api/reviews', { cards: { 'mx-dot-def': cardState(1_000_000) } });
+  assert.deepEqual(put.body, { saved: 1 });
+  await first.close();
+
+  const second = await start();
+  try {
+    await second.call('POST', '/api/login', { username: USER, password: PASSWORD });
+    const got = await second.call('GET', '/api/reviews');
+    assert.deepEqual(got.body.cards['mx-dot-def'], cardState(1_000_000));
+  } finally {
+    await second.close();
+  }
+});
+
+test('an older review never overwrites a newer one', async () => {
+  const app = await start();
+  try {
+    await app.call('POST', '/api/login', { username: USER, password: PASSWORD });
+    await app.call('PUT', '/api/reviews', { cards: { 'np-axis0': cardState(5_000_000, { ivl: 9 }) } });
+    await app.call('PUT', '/api/reviews', { cards: { 'np-axis0': cardState(4_000_000, { ivl: 1 }), 'np-axis1': cardState(4_000_000) } });
+    const { cards } = (await app.call('GET', '/api/reviews')).body;
+    assert.equal(cards['np-axis0'].ivl, 9);
+    assert.ok(cards['np-axis1']);
+  } finally {
+    await app.close();
+  }
+});
+
+test('malformed review data is rejected as a whole', async () => {
+  const app = await start();
+  try {
+    await app.call('POST', '/api/login', { username: USER, password: PASSWORD });
+    const bad = [
+      { cards: { 'Bad Id!': cardState(1) } },
+      { cards: { 'ok-id': { ...cardState(1), phase: 'graduated' } } },
+      { cards: { 'ok-id': { ...cardState(1), ease: 'high' } } },
+      { cards: [] },
+    ];
+    for (const body of bad) assert.equal((await app.call('PUT', '/api/reviews', body)).status, 400, JSON.stringify(body));
+    assert.equal((await app.call('GET', '/api/reviews')).body.cards['ok-id'], undefined);
+  } finally {
+    await app.close();
+  }
+});
+
+test('reset clears lessons and reviews but keeps the sound setting', async () => {
   const app = await start();
   try {
     await app.call('POST', '/api/login', { username: USER, password: PASSWORD });
     await app.call('PUT', '/api/progress', { done: { 'dr-1': true }, xp: 99, muted: true });
+    await app.call('PUT', '/api/reviews', { cards: { 'dr-def': cardState(1_000) } });
     const reset = await app.call('DELETE', '/api/progress');
     assert.deepEqual(reset.body, { done: {}, xp: 0, streak: 0, last: null, muted: true });
+    assert.deepEqual((await app.call('GET', '/api/reviews')).body, { cards: {} });
   } finally {
     await app.close();
   }
@@ -156,6 +208,13 @@ test('serves the app page but nothing outside the public folder', async () => {
     assert.equal(page.status, 200);
     assert.match(page.headers.get('content-type'), /text\/html/);
     assert.match(await page.text(), /<title>Lemma<\/title>/);
+    assert.match(page.headers.get('content-security-policy'), /script-src 'self'/);
+    const manifest = await fetch(app.base + '/manifest.webmanifest');
+    assert.match(manifest.headers.get('content-type'), /application\/manifest\+json/);
+    assert.equal((await manifest.json()).display, 'standalone');
+    for (const path of ['/sw.js', '/js/app.js', '/icons/icon-512.png', '/icons/maskable-512.png']) {
+      assert.equal((await fetch(app.base + path)).status, 200, path);
+    }
     assert.equal((await fetch(app.base + '/%2e%2e%2fserver.js')).status, 404);
     assert.equal((await fetch(app.base + '/..%2f.env')).status, 404);
   } finally {

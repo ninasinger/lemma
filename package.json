@@ -2,7 +2,7 @@
   "name": "lemma",
   "version": "1.0.0",
   "private": true,
-  "description": "Duolingo-style interactive lessons on PCA, SVD, L2 regularization, weight decay and dropout, with accounts and saved progress.",
+  "description": "Bite-size lessons and spaced-repetition reviews for the math behind machine learning: matrices, PCA, SVD, regularization and dropout.",
   "type": "module",
   "engines": {
     "node": ">=20.6"
@@ -10,6 +10,8 @@
   "scripts": {
     "start": "node server.js",
     "seed": "node --env-file=.env scripts/seed.js",
-    "test": "node --test"
+    "test": "node --test",
+    "verify:py": ".venv/bin/python scripts/verify_numpy.py",
+    "icons": "python3 scripts/make_icons.py"
   }
 }

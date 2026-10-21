@@ -5,11 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { DEFAULT_DB_FILE, openStore } from './lib/store.js';
 import { hashPassword, hashToken, newSessionToken, normalizeUsername, verifyPassword } from './lib/auth.js';
 import { emptyProgress, mergeProgress, sanitizeProgress } from './lib/progress.js';
+import { mergeReviews, sanitizeReviewBatch } from './lib/reviews.js';
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 
 const SESSION_DAYS = 30;
 const MAX_BODY_BYTES = 16 * 1024;
+const MAX_REVIEW_BODY_BYTES = 512 * 1024;
 const MAX_LOGIN_FAILURES = 10;
 const LOCKOUT_MS = 15 * 60 * 1000;
 const CONTENT_TYPES = {
@@ -17,10 +19,26 @@ const CONTENT_TYPES = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
 };
+// Scripts may only come from this server; fonts come from Google Fonts.
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -29,8 +47,12 @@ class HttpError extends Error {
   }
 }
 
-export async function createApp({ dbFile = DEFAULT_DB_FILE, publicDir = join(ROOT, 'public'), secureCookies = false } = {}) {
+export async function createApp({ dbFile = DEFAULT_DB_FILE, publicDir = join(ROOT, 'public'), secureCookies = false, trustProxy = false } = {}) {
   const store = await openStore(dbFile);
+  store.data.reviews ??= {};
+  // Behind a reverse proxy every request arrives from the proxy, so use the address it forwards.
+  const clientIp = (req) =>
+    (trustProxy && String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim()) || req.socket.remoteAddress || '';
   const loginFailures = new Map();
   // Checked against when the username doesn't exist, so a wrong username takes as long as a wrong password.
   const decoyHash = await hashPassword('decoy');
@@ -61,7 +83,7 @@ export async function createApp({ dbFile = DEFAULT_DB_FILE, publicDir = join(ROO
 
   const routes = {
     async 'POST /api/login'(req, res) {
-      const ip = req.socket.remoteAddress ?? '';
+      const ip = clientIp(req);
       const record = loginFailures.get(ip);
       const locked = record && record.until > Date.now();
       if (locked && record.count >= MAX_LOGIN_FAILURES) {
@@ -116,12 +138,28 @@ export async function createApp({ dbFile = DEFAULT_DB_FILE, publicDir = join(ROO
       sendJson(res, 200, merged);
     },
 
+    // Resets lessons and review history together; keeps the sound setting.
     async 'DELETE /api/progress'(req, res) {
       const username = requireUser(req);
       const muted = store.data.progress[username]?.muted ?? false;
       store.data.progress[username] = { ...emptyProgress(), muted };
+      delete store.data.reviews[username];
       await store.save();
       sendJson(res, 200, store.data.progress[username]);
+    },
+
+    async 'GET /api/reviews'(req, res) {
+      const username = requireUser(req);
+      sendJson(res, 200, { cards: store.data.reviews[username] ?? {} });
+    },
+
+    async 'PUT /api/reviews'(req, res) {
+      const username = requireUser(req);
+      const incoming = sanitizeReviewBatch(await readJson(req, MAX_REVIEW_BODY_BYTES));
+      if (!incoming) throw new HttpError(400, 'Review data is malformed.');
+      store.data.reviews[username] = mergeReviews(store.data.reviews[username] ?? {}, incoming);
+      await store.save();
+      sendJson(res, 200, { saved: Object.keys(incoming).length });
     },
   };
 
@@ -152,7 +190,7 @@ function sendJson(res, status, body) {
   res.end(body === undefined ? undefined : JSON.stringify(body));
 }
 
-async function readJson(req) {
+async function readJson(req, maxBytes = MAX_BODY_BYTES) {
   // Requiring a JSON content type also stops other sites from posting plain HTML forms here.
   if (!/^application\/json\b/i.test(req.headers['content-type'] ?? '')) {
     throw new HttpError(415, 'Send JSON with Content-Type: application/json.');
@@ -161,7 +199,7 @@ async function readJson(req) {
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY_BYTES) throw new HttpError(413, 'Request body is too large.');
+    if (size > maxBytes) throw new HttpError(413, 'Request body is too large.');
     chunks.push(chunk);
   }
   try {
@@ -198,18 +236,28 @@ async function serveStatic(publicDir, pathname, req, res) {
     if (err.code === 'ENOENT' || err.code === 'EISDIR') throw new HttpError(404, 'Not found.');
     throw err;
   }
-  res.writeHead(200, {
-    'Content-Type': CONTENT_TYPES[extname(file)] ?? 'application/octet-stream',
+  const type = CONTENT_TYPES[extname(file)] ?? 'application/octet-stream';
+  const headers = {
+    'Content-Type': type,
     'Cache-Control': 'no-cache',
     'X-Content-Type-Options': 'nosniff',
-  });
+    'Referrer-Policy': 'same-origin',
+  };
+  if (type.startsWith('text/html')) {
+    headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY;
+    headers['X-Frame-Options'] = 'DENY';
+  }
+  res.writeHead(200, headers);
   res.end(req.method === 'HEAD' ? undefined : body);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT) || 3000;
   const host = process.env.HOST ?? '127.0.0.1';
-  const { server, store } = await createApp({ secureCookies: process.env.NODE_ENV === 'production' });
+  const { server, store } = await createApp({
+    secureCookies: process.env.NODE_ENV === 'production',
+    trustProxy: process.env.TRUST_PROXY === '1',
+  });
   if (Object.keys(store.data.users).length === 0) {
     console.warn('No users yet. Copy .env.example to .env, set a username and password, then run `npm run seed`.');
   }
