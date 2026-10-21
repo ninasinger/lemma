@@ -134,11 +134,12 @@ test('simultaneous saves from two devices both land', async () => {
   await laptop('POST', '/api/login', { username: 'tester', password: ENV.SEED_PASSWORD });
   const state = (last) => ({ phase: 'review', step: 0, ivl: 1, ease: 2.5, reps: 1, lapses: 0, due: last + 1, last, intro: last });
   const ids = Array.from({ length: 12 }, (_, i) => `card-${i}`);
-  await Promise.all(ids.map((id, i) => (i % 2 ? phone : laptop)('PUT', '/api/reviews', { cards: { [id]: state(1000 + i) } })));
-  await Promise.all([
+  const saves = await Promise.all([
+    ...ids.map((id, i) => (i % 2 ? phone : laptop)('PUT', '/api/reviews', { cards: { [id]: state(1000 + i) } })),
     phone('PUT', '/api/progress', { done: { 'mx-1': true }, xp: 10 }),
     laptop('PUT', '/api/progress', { done: { 'gen-1': true }, xp: 15 }),
   ]);
+  assert.deepEqual(saves.map((s) => s.status), saves.map(() => 200));
   const { cards } = (await phone('GET', '/api/reviews')).body;
   assert.deepEqual(Object.keys(cards).sort(), [...ids].sort());
   assert.deepEqual(Object.keys((await laptop('GET', '/api/progress')).body.done).sort(), ['gen-1', 'mx-1']);
