@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { UNITS } from '../public/js/content/index.js';
-import { W } from '../public/js/widgets.js';
+import { W, OPTIMIZERS, simulateOptimizer } from '../public/js/widgets.js';
 import { parseShape, rich } from '../public/js/util.js';
 
 const lessons = UNITS.flatMap((u) => u.lessons);
 const cards = lessons.flatMap((l) => l.cards ?? []);
-const STEP_TYPES = new Set(['learn', 'task', 'mc', 'tf', 'num', 'shape', 'match']);
+const STEP_TYPES = new Set(['learn', 'task', 'mc', 'tf', 'num', 'shape', 'match', 'explain']);
+const KINDS = new Set(['recall', 'derive', 'diagnose', 'defend', 'code']);
 
 test('unit, lesson and card ids are unique and permanent-safe', () => {
   const ids = [...UNITS.map((u) => u.id), ...lessons.map((l) => l.id)];
@@ -36,13 +37,20 @@ test('every step is well formed', () => {
         if (s.a === 'error') assert.ok(s.err, `${where}: an "error" answer needs err: true so the hint mentions it`);
       }
       if (s.t === 'match') assert.ok(s.p.length >= 2 && s.p.every((p) => p.length === 2), where);
+      if (s.t === 'explain') {
+        assert.ok(KINDS.has(s.kind), `explain step needs a kind in ${where}`);
+        assert.ok(s.model && s.rubric?.length >= 3, `explain step needs a model answer and 3+ rubric points in ${where}`);
+      }
     }
   }
 });
 
 test('every lesson unlocks at least three review cards', () => {
   for (const l of lessons) assert.ok((l.cards ?? []).length >= 3, l.id);
-  for (const c of cards) assert.ok(c.front && c.back, c.id);
+  for (const c of cards) {
+    assert.ok(c.front && c.back, c.id);
+    if (c.rubric) assert.ok(KINDS.has(c.kind) && c.rubric.length >= 3, `${c.id}: rubric cards need a kind and 3+ points`);
+  }
 });
 
 test('shape answers parse the way people type them', () => {
@@ -58,4 +66,17 @@ test('rich text turns {{…}} into a matrix', () => {
   const html = rich('A = {{1 2; 3 4}}');
   assert.match(html, /class="mtx" style="--cols:2"/);
   assert.equal((html.match(/<span>/g) || []).length, 4);
+});
+
+test('the optimizer widget reproduces the numbers taught in the weight-decay lesson', () => {
+  const end = (id, opts) => simulateOptimizer(id, opts).at(-1);
+  assert.deepEqual(OPTIMIZERS.map((o) => end(o.id, { steps: 200 }).toFixed(3)), ['0.819', '0.120', '0.819', '0.016', '0.819']);
+  const busy = OPTIMIZERS.map((o) => end(o.id, { steps: 2000, busy: true }));
+  assert.deepEqual(busy.map((w) => w.toFixed(3)).slice(0, 4), ['1.818', '1.818', '1.980', '1.818']);
+  assert.equal(busy[4].toFixed(2), '1.98');
+});
+
+test('the new course has derive, diagnose and defend practice', () => {
+  const kinds = new Set([...lessons.flatMap((l) => l.steps), ...cards].filter((x) => x.kind).map((x) => x.kind));
+  for (const k of ['derive', 'diagnose', 'defend']) assert.ok(kinds.has(k), k);
 });

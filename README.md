@@ -2,16 +2,17 @@
 
 Bite-size, Duolingo-style lessons on the math behind machine learning, with Anki-style spaced repetition so it sticks. It works on phones and installs to the home screen.
 
-**Course (20 lessons, 92 flashcards)**
+**Course (7 units, 23 lessons, 129 flashcards)**
 
 1. **Matrices**: dot products, matrix × vector (row and column views), matrix × matrix entry by entry, the data matrix and XᵀX, NumPy shapes, axes and broadcasting.
 2. **PCA**: max-variance directions, components and scree plots, PCA in NumPy with every shape.
-3. **SVD**: rotate–stretch–rotate, rank-k compression, `np.linalg.svd` shapes and how it gives PCA.
-4. **L2 regularization**: overfitting, ridge geometry, the gradient and closed form in NumPy.
-5. **Weight decay**: decay vs L2 vs AdamW, and the shapes inside a PyTorch `nn.Linear`.
-6. **Dropout**: masks, inverted scaling, and dropout in NumPy.
+3. **SVD**: rotate–stretch–rotate, rank-k compression (Eckart–Young), `np.linalg.svd` shapes and how it gives PCA.
+4. **Generalization**: bias² + variance + noise, learning curves read as clues with assumptions, and diagnosing capacity, optimization, leakage and shift.
+5. **L2 regularization**: overfitting, ridge geometry, the gradient and closed form, feature units, sum-vs-mean λ, conditioning.
+6. **Weight decay**: full Adam, Adam + L2 vs AdamW worked numerically, momentum, learning-rate coupling, `grad=None`, and the shapes inside a PyTorch `nn.Linear`.
+7. **Dropout**: masks, inverted scaling, mean and variance, why test-time scaling only approximates averaging, `eval()` vs `no_grad()`.
 
-Each lesson mixes interactive widgets (drag vectors, tap matrix entries, collapse axes) with questions, including "predict the shape" questions where you type a NumPy shape. Finishing a lesson adds its flashcards to **Review**. Cards are scheduled with Anki's SM-2 rules (Again / Hard / Good / Easy, learning steps of 1 and 10 minutes, then growing day intervals).
+Each lesson mixes interactive widgets (drag vectors, tap matrix entries, collapse axes) with questions, including "predict the shape" questions where you type a NumPy shape. Open-ended **Recall / Derive / Diagnose / Defend** prompts ask you to produce an answer (typed or out loud, against a timer), then compare it with a model answer and a rubric. Finishing a lesson adds its flashcards to **Review**, including rubric-graded interview cards. Cards are scheduled with Anki's SM-2 rules (Again / Hard / Good / Easy, learning steps of 1 and 10 minutes, then growing day intervals).
 
 ## Run it
 
@@ -65,5 +66,5 @@ Reviews are written to an outbox in the browser before they are sent, so grading
 ```bash
 npm test                 # server, scheduler, service worker, content checks
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-npm run verify:py        # 65 NumPy checks against the lesson text
+npm run verify:py        # 91 NumPy checks: shapes, gradients, optimizer numbers, decompositions
 ```

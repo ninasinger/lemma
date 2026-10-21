@@ -25,7 +25,7 @@ X_hat = Z @ W.T + mu             # (n, d)</pre>`,
  ]},
  {id:'pca-2',title:'Components & compression',steps:[
   {t:'learn',title:'More components',body:`<p><b>PC2</b> is the direction of greatest remaining variance that is <b>perpendicular</b> to PC1. PC3 is perpendicular to both, and so on.</p><p>Formally, the PCs are the <b>eigenvectors</b> of the covariance matrix <span class="m">C = XᵀX / (n−1)</span>, and each <b>eigenvalue</b> λᵢ is the variance along PCᵢ.</p><p>The share of variance that PCᵢ explains is <span class="m">λᵢ / (λ₁ + λ₂ + …)</span>.</p>`},
-  {t:'tf',q:`Principal components are always orthogonal (perpendicular) to each other.`,a:true,ex:`The covariance matrix is symmetric, so its eigenvectors can be chosen orthogonal. That also makes the projected features uncorrelated.`},
+  {t:'tf',q:`Principal components are always orthogonal (perpendicular) to each other.`,a:true,ex:`The covariance matrix is symmetric, so its eigenvectors can be chosen orthonormal. Eigenvectors for different eigenvalues are automatically orthogonal; for a repeated eigenvalue you pick an orthogonal basis of its eigenspace. That also makes the projected features uncorrelated.`},
   {t:'num',q:`The covariance eigenvalues are <span class="m">6, 3, 1</span>. What percent of the variance does PC1 explain?`,a:60,tol:.5,suf:'%',ex:`6 / (6 + 3 + 1) = 0.6, so 60%.`},
   {t:'task',title:'How many to keep?',body:`<p>These are the eigenvalues of a 6-feature dataset, drawn as a <b>scree plot</b>. Tap a bar to keep that many components. Find the <b>smallest</b> k that keeps at least 90% of the variance.</p>`,w:'scree',hint:`Add components until the total crosses the 90% tick, then stop.`,ex:`k = 3 keeps 91.1%. You squeezed 6 numbers per row into 3 and kept almost all of the structure.`},
   {t:'match',q:`Match each piece of PCA to what it means.`,p:[[`Eigenvector of C`,`A principal direction`],[`Eigenvalue of C`,`Variance along that direction`],[`Top-k projection`,`Compressed representation`],[`Centering`,`Subtracting the mean`]],ex:`That is the whole PCA vocabulary.`},
@@ -34,7 +34,7 @@ X_hat = Z @ W.T + mu             # (n, d)</pre>`,
  cards:[
   { id: 'pca-eig', front: `PCA takes the eigenvectors of which matrix?`, back: `The covariance matrix C = XcᵀXc / (n − 1). Eigenvectors are the principal directions; eigenvalue λᵢ is the variance along PCᵢ.` },
   { id: 'pca-ratio', front: `What is the explained-variance ratio of PCᵢ?`, back: `λᵢ / (λ₁ + λ₂ + … + λ_d).` },
-  { id: 'pca-orth', front: `Why are principal components orthogonal?`, back: `The covariance matrix is symmetric, and symmetric matrices have orthogonal eigenvectors. So the projected features are uncorrelated.` },
+  { id: 'pca-orth', front: `Why are principal components orthogonal?`, back: `The covariance matrix is symmetric, and symmetric matrices have an orthonormal basis of eigenvectors (automatic for distinct eigenvalues, a choice within a repeated one). So the projected features are uncorrelated.` },
   { id: 'pca-limit', front: `What is PCA’s main limitation?`, back: `It only finds linear (straight-line) structure. Curved structure needs kernel PCA, t-SNE or UMAP.` },
  ]},
  {id:'pca-3',title:'PCA in NumPy',steps:[

@@ -3,8 +3,9 @@
 import mx from './matrices.js';
 import pca from './pca.js';
 import svd from './svd.js';
+import gen from './gen.js';
 import l2 from './l2.js';
 import wd from './wd.js';
 import dr from './dr.js';
 
-export const UNITS = [mx, pca, svd, l2, wd, dr];
+export const UNITS = [mx, pca, svd, gen, l2, wd, dr];

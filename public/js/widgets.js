@@ -121,8 +121,8 @@ W.ridge=function(el,o){
   const D=ridgeData(),GOAL=.025;let i=o.start??0;
   el.innerHTML=`<div class="wbox"><div class="rgrid"><figure><svg class="wsvg" viewBox="0 0 320 200" role="img" aria-label="Degree-11 polynomial fit through twelve noisy points"></svg>
     <figcaption class="legend"><span><i class="lg-dot"></i>training points</span><span><i class="lg-dash"></i>true function</span><span><i></i>your fit</span></figcaption></figure>
-    <div class="rside"><svg class="wsvg" viewBox="0 0 300 136" role="img" aria-label="Train and test error as lambda changes"></svg>
-    <div class="stats"><div><span>Train error</span><b class="tr"></b></div><div><span>Test error</span><b class="te"></b></div><div><span>Weight size ‖w‖</span><b class="nw"></b></div></div></div></div>
+    <div class="rside"><svg class="wsvg" viewBox="0 0 300 136" role="img" aria-label="Training error and true error as lambda changes"></svg>
+    <div class="stats"><div><span>Train error</span><b class="tr"></b></div><div><span>True error</span><b class="te"></b></div><div><span>Weight size ‖w‖</span><b class="nw"></b></div></div></div></div>
     <div class="rng"><label for="ridge-l">λ</label><input id="ridge-l" type="range" min="0" max="100" step="1"><output></output></div></div>`;
   const[sv,su]=$$('svg',el),inp=$('input',el),X=x=>(16+(x+1)/2*288).toFixed(1),Y=y=>(100-y*36).toFixed(1);
   let tru='';for(let k=0;k<=120;k++){const x=-1+2*k/120;tru+=(k?'L':'M')+X(x)+' '+Y(D.f(x))}
@@ -131,7 +131,7 @@ W.ridge=function(el,o){
   let ubase='';[[1,'1'],[.1,'0.1'],[.01,'0.01'],[.001,'10⁻³'],[1e-4,'10⁻⁴']].forEach(([e,l])=>{ubase+=`<line class="g" x1="36" y1="${UY(e)}" x2="292" y2="${UY(e)}"/><text x="31" y="${UY(e)+4}" text-anchor="end">${l}</text>`});
   [-8,-6,-4,-2,0,2].forEach(L=>ubase+=`<text x="${UX(L)}" y="128" text-anchor="middle">10${sup(L)}</text>`);
   if(o.goal)ubase+=`<line class="goal" x1="36" y1="${UY(GOAL)}" x2="292" y2="${UY(GOAL)}"/><text class="goalt" x="290" y="${UY(GOAL)-4}" text-anchor="end">goal</text>`;
-  ubase+=`<path class="trp" d="${trp}"/><path class="tep" d="${tep}"/><text class="tt" x="44" y="${UY(D.fits[0].te)+14}">test</text><text x="44" y="${UY(D.fits[0].tr)-6}">train</text>`;
+  ubase+=`<path class="trp" d="${trp}"/><path class="tep" d="${tep}"/><text class="tt" x="44" y="${UY(D.fits[0].te)+14}">true</text><text x="44" y="${UY(D.fits[0].tr)-6}">train</text>`;
   function draw(){
     const q=D.fits[i];let s=`<defs><clipPath id="rclip"><rect x="0" y="0" width="320" height="200"/></clipPath></defs>`;
     for(let y=-2;y<=2;y++)s+=`<line class="${y?'g':'ax'}" x1="0" y1="${Y(y)}" x2="320" y2="${Y(y)}"/>`;
@@ -346,4 +346,167 @@ W.axis=function(el,o){
   $('#ax-keep',el).addEventListener('change',e=>{keep=e.target.checked;draw()});
   draw();
   return{solved:()=>!o.goal||(op===o.goal.op&&axis===o.goal.axis)};
+};
+
+/* ---------- generalization ---------- */
+// Bias-variance: refit a polynomial of each degree on 40 independent noisy datasets.
+let BV=null;
+function bvData(){
+  if(BV)return BV;
+  const R=rng(21),f=x=>Math.sin(Math.PI*x),sigma=.35,N=20,K=40,grid=Array.from({length:61},(_,i)=>-.9+1.8*i/60);
+  const sets=Array.from({length:K},()=>{const xs=[],ys=[];for(let i=0;i<N;i++){const x=R()*2-1;xs.push(x);ys.push(f(x)+gauss(R)*sigma)}return{xs,ys}});
+  const pv=(w,x)=>{let s=0,p=1;for(const c of w){s+=c*p;p*=x}return s};
+  const per=[];
+  for(let d=0;d<=10;d++){
+    const P=d+1,preds=sets.map(({xs,ys})=>{
+      const A=Array.from({length:P},()=>new Array(P).fill(0)),b=new Array(P).fill(0);
+      xs.forEach((x,i)=>{for(let j=0;j<P;j++){b[j]+=x**j*ys[i];for(let k=0;k<P;k++)A[j][k]+=x**(j+k)}});
+      for(let j=1;j<P;j++)A[j][j]+=1e-6;
+      const w=solve(A,b);return grid.map(x=>pv(w,x));
+    });
+    const mean=grid.map((_,g)=>preds.reduce((s,p)=>s+p[g],0)/K);
+    const bias2=grid.reduce((s,x,g)=>s+(mean[g]-f(x))**2,0)/grid.length;
+    const variance=grid.reduce((s,_,g)=>s+preds.reduce((t,p)=>t+(p[g]-mean[g])**2,0)/K,0)/grid.length;
+    per.push({d,preds,mean,bias2,variance,total:bias2+variance+sigma*sigma});
+  }
+  return BV={f,grid,sigma,per,sets};
+}
+W.biasvar=function(el,o){
+  const D=bvData();let d=o.d??1;
+  const best=D.per.reduce((a,b)=>b.total<a.total?b:a).d;
+  el.innerHTML=`<div class="wbox"><div class="rgrid"><figure><svg class="wsvg" viewBox="0 0 320 200" role="img" aria-label="Polynomial fits to 40 different noisy datasets"></svg>
+    <figcaption class="legend"><span><i class="lg-dash"></i>true f(x)</span><span><i class="lg-thin"></i>fits on different datasets</span><span><i></i>average fit</span></figcaption></figure>
+    <div class="rside"><svg class="wsvg" viewBox="0 0 300 136" role="img" aria-label="Bias squared, variance and expected error by degree"></svg><p class="legend"><span><i class="lg-bias"></i>bias²</span><span><i class="lg-var"></i>variance</span><span><i></i>expected error</span><span>by degree</span></p>
+    <div class="bvbars"></div></div></div>
+    <div class="rng"><label for="bv-d">degree</label><input id="bv-d" type="range" min="0" max="10" step="1"><output></output></div></div>`;
+  const[sv,su]=$$('svg',el),inp=$('input',el),X=x=>(14+(x+1)/2*292).toFixed(1),Y=y=>(100-y*40).toFixed(1);
+  let truth='';for(let k=0;k<=100;k++){const x=-1+2*k/100;truth+=(k?'L':'M')+X(x)+' '+Y(D.f(x))}
+  const UX=dd=>34+dd/10*256,UY=e=>8+(0.7-Math.log10(Math.max(e,1e-3)))/3.7*96;
+  let ub='';[[1,'1'],[.1,'0.1'],[.01,'0.01']].forEach(([e,l])=>ub+=`<line class="g" x1="34" y1="${UY(e)}" x2="290" y2="${UY(e)}"/><text x="30" y="${UY(e)+4}" text-anchor="end">${l}</text>`);
+  [0,2,4,6,8,10].forEach(dd=>ub+=`<text x="${UX(dd)}" y="128" text-anchor="middle">${dd}</text>`);
+  const line=(key,cls)=>`<path class="${cls}" d="${D.per.map((p,i)=>(i?'L':'M')+UX(p.d).toFixed(1)+' '+UY(p[key]).toFixed(1)).join('')}"/>`;
+  ub+=line('bias2','bvb')+line('variance','bvv')+line('total','tep');
+  function draw(){
+    const p=D.per[d];let s=`<defs><clipPath id="bvclip"><rect x="0" y="0" width="320" height="200"/></clipPath></defs>`;
+    for(let y=-2;y<=2;y++)s+=`<line class="${y?'g':'ax'}" x1="0" y1="${Y(y)}" x2="320" y2="${Y(y)}"/>`;
+    s+='<g clip-path="url(#bvclip)">';
+    p.preds.slice(0,14).forEach(pr=>s+=`<path class="bvfit" d="${D.grid.map((x,g)=>(g?'L':'M')+X(x)+' '+Y(Math.max(-5,Math.min(5,pr[g])))).join('')}"/>`);
+    s+=`<path class="truef" d="${truth}"/><path class="fitp" d="${D.grid.map((x,g)=>(g?'L':'M')+X(x)+' '+Y(Math.max(-5,Math.min(5,p.mean[g])))).join('')}"/></g>`;
+    sv.innerHTML=s;
+    su.innerHTML=ub+`<line class="mk" x1="${UX(d)}" y1="4" x2="${UX(d)}" y2="108"/><circle class="mkd" cx="${UX(d)}" cy="${UY(p.total)}" r="5"/>`;
+    inp.value=d;$('output',el).textContent=d;
+    const F=v=>v>=100?Math.round(v).toLocaleString():v.toFixed(3),mx=Math.max(p.total,.2);
+    $('.bvbars',el).innerHTML=[['bias²',p.bias2,'bvb'],['variance',p.variance,'bvv'],['noise σ²',D.sigma**2,'bvn'],['expected error',p.total,'bvt']].map(([n,v,c])=>`<div class="bvrow ${c}"><span>${n}</span><i style="width:${Math.min(100,v/mx*100)}%"></i><b>${F(v)}</b></div>`).join('');
+  }
+  inp.addEventListener('input',()=>{d=+inp.value;draw()});draw();
+  return{solved:()=>d===best};
+};
+
+// Train/validation learning curves for six situations, read as clues with assumptions.
+const CURVES={
+  variance:{name:'Big gap, still closing',tr:n=>.01+.04*(1-Math.exp(-n/20000)),va:n=>.06+.25*(n/100)**-.35,
+    pattern:'Training error is far below validation, and the gap keeps shrinking as you add data.',
+    suggests:'High variance (overfitting). More data should keep paying off; stronger regularization or a smaller model are cheaper things to try first.',
+    assume:'Both errors are measured the same way (eval mode, same preprocessing), validation comes from the training distribution, and the validation set is big enough that the gap isn’t noise.',
+    test:'Train on 25%, 50% and 100% of the data. If validation keeps improving at 100%, more data is worth collecting.'},
+  bias:{name:'High and flat, small gap',tr:n=>.25-.08*(n/100)**-.5,va:n=>.25+.12*(n/100)**-.5,
+    pattern:'Training and validation errors are close and both level off high.',
+    suggests:'High bias: too little capacity or uninformative features. More data won’t move the plateau.',
+    assume:'Optimization is actually working (the next scenario looks identical), and the plateau isn’t just label noise.',
+    test:'Try a larger model or better features, and check that the model can overfit a small subset.'},
+  optim:{name:'Stuck high everywhere',tr:n=>.42+.008*Math.sin(Math.log10(n)*4),va:n=>.43+.008*Math.cos(Math.log10(n)*4),
+    pattern:'Both errors are high and flat at every data size: the same shape as high bias.',
+    suggests:'Optimization failure: a bad learning rate, poor initialization, saturated activations or a bug.',
+    assume:'Learning curves alone can’t separate this from high bias. You need evidence from training itself.',
+    test:'Overfit one small batch (say 32 examples). If training loss won’t approach zero, suspect optimization or a bug, not capacity.'},
+  leak:{name:'Too good to be true',tr:n=>.02,va:n=>.025+.01*(n/100)**-.5,fresh:n=>.3,
+    pattern:'Validation is nearly as good as training, and better than seems plausible. Fresh data (dashed) is much worse.',
+    suggests:'Leakage: a feature encodes the label, duplicates span the split, or the same user or time period sits on both sides.',
+    assume:'The fresh data really is from the same population; otherwise this could be shift instead.',
+    test:'Split by user or time, deduplicate, and drop features that wouldn’t exist at prediction time. Watch whether validation falls to the fresh-data level.'},
+  shift:{name:'Deployment stays worse',tr:n=>.04+.02*(1-Math.exp(-n/30000)),va:n=>.07+.15*(n/100)**-.4,fresh:n=>.21+.03*(n/100)**-.3,
+    pattern:'Train and validation agree, but deployment data (dashed) stays worse however much data you add.',
+    suggests:'Distribution shift. More data from the old distribution doesn’t close the deployment gap.',
+    assume:'The deployment set is labeled the same way; a labeling change looks just like shift.',
+    test:'Build a validation set from deployment data and compare slices; try reweighting, or collect data from the new distribution.'},
+  dropout:{name:'Validation below training',tr:n=>.12+.08*(n/100)**-.3,va:n=>.09+.12*(n/100)**-.35,
+    pattern:'Validation error is lower than training error.',
+    suggests:'Often harmless: training loss is computed with dropout (and augmentation) on, while validation runs the full network in eval mode. A running average over an epoch also lags the latest weights.',
+    assume:'Before accepting that, rule out an easier or leaked validation set.',
+    test:'Recompute training loss in eval mode on a training subset. It should come out below validation.'},
+};
+W.curves=function(el,o){
+  let sc=o.start||'variance';
+  el.innerHTML=`<div class="wbox"><div class="chips cvchips" role="group" aria-label="Scenario">${Object.entries(CURVES).map(([k,v])=>`<button type="button" class="chip" data-k="${k}">${v.name}</button>`).join('')}</div>
+    <svg class="wsvg" viewBox="0 0 320 190" role="img" aria-label="Training and validation error against training-set size"></svg>
+    <figcaption class="legend"><span><i class="lg-train"></i>training error</span><span><i></i>validation error</span><span class="lgfresh"><i class="lg-dash"></i>fresh / deployment data</span></figcaption>
+    <dl class="clues"></dl><p class="cap">Illustrative curves: real ones are noisier, so look at several runs before reading them.</p></div>`;
+  const svg=$('svg',el),X=n=>(40+(Math.log10(n)-2)/3*268).toFixed(1),Y=e=>(165-e/.5*150).toFixed(1);
+  function draw(){
+    const c=CURVES[sc],ns=Array.from({length:61},(_,i)=>10**(2+3*i/60));
+    let s='';[0,.1,.2,.3,.4,.5].forEach(e=>s+=`<line class="g" x1="40" y1="${Y(e)}" x2="310" y2="${Y(e)}"/><text x="34" y="${+Y(e)+4}" text-anchor="end">${e}</text>`);
+    [[100,'100'],[1000,'1k'],[10000,'10k'],[100000,'100k']].forEach(([n,l])=>s+=`<text x="${X(n)}" y="183" text-anchor="middle">${l}</text>`);
+    s+=`<text x="40" y="12">error</text><text x="310" y="170" text-anchor="end">training examples →</text>`;
+    const path=(fn,cls)=>`<path class="${cls}" d="${ns.map((n,i)=>(i?'L':'M')+X(n)+' '+Y(Math.min(.5,fn(n)))).join('')}"/>`;
+    if(c.fresh)s+=path(c.fresh,'truef');
+    s+=path(c.tr,'trp')+path(c.va,'tep');
+    svg.innerHTML=s;
+    $('.lgfresh',el).hidden=!c.fresh;
+    $('.clues',el).innerHTML=`<dt>Pattern</dt><dd>${c.pattern}</dd><dt>Suggests, if the assumptions hold</dt><dd>${c.suggests}</dd><dt>Assumptions to check</dt><dd>${c.assume}</dd><dt>Cheapest test</dt><dd>${c.test}</dd>`;
+    $$('[data-k]',el).forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===sc));
+  }
+  $$('[data-k]',el).forEach(b=>b.addEventListener('click',()=>{sc=b.dataset.k;sfx.tap();draw()}));
+  draw();
+  return{solved:()=>!o.goal||sc===o.goal};
+};
+
+/* ---------- optimizers and weight decay ---------- */
+// Five update rules on two weights: one the loss uses (gradient w − 2) and one it never touches.
+export const OPTIMIZERS=[
+  {id:'sgd',name:'SGD + L2',cls:'o1'},
+  {id:'mom',name:'SGD momentum + L2',cls:'o2'},
+  {id:'momdec',name:'SGD momentum, decoupled',cls:'o3'},
+  {id:'adaml2',name:'Adam + L2',cls:'o4'},
+  {id:'adamw',name:'AdamW',cls:'o5'},
+];
+export function simulateOptimizer(opt,{eta=.01,lam=.1,steps=200,busy=false,b1=.9,b2=.999,eps=1e-8,mu=.9}={}){
+  let w=1,m=0,v=0,buf=0;const path=[w];
+  for(let t=1;t<=steps;t++){
+    const g=busy?w-2:0;
+    if(opt==='sgd')w=w-eta*(g+lam*w);
+    else if(opt==='mom'){buf=mu*buf+(g+lam*w);w=w-eta*buf}
+    else if(opt==='momdec'){buf=mu*buf+g;w=w-eta*buf-eta*lam*w}
+    else if(opt==='adaml2'){const gg=g+lam*w;m=b1*m+(1-b1)*gg;v=b2*v+(1-b2)*gg*gg;w=w-eta*(m/(1-b1**t))/(Math.sqrt(v/(1-b2**t))+eps)}
+    else{w=w*(1-eta*lam);m=b1*m+(1-b1)*g;v=b2*v+(1-b2)*g*g;w=w-eta*(m/(1-b1**t))/(Math.sqrt(v/(1-b2**t))+eps)}
+    path.push(w);
+  }
+  return path;
+}
+W.optim=function(el,o){
+  let busy=!!o.busy,lam=o.lam??.1,eta=o.eta??.01,steps=o.steps??200;
+  el.innerHTML=`<div class="wbox"><div class="chips" role="group" aria-label="Which weight"><button type="button" class="chip" data-b="0">Unused weight</button><button type="button" class="chip" data-b="1">Busy weight</button></div>
+    <svg class="wsvg" viewBox="0 0 320 180" role="img" aria-label="Weight value over training steps for five optimizers"></svg>
+    <div class="optlegend"></div>
+    <div class="rng"><label for="op-steps">steps</label><input id="op-steps" type="range" min="50" max="2000" step="50"><output></output></div>
+    <div class="rng"><label for="op-lam">λ</label><input id="op-lam" type="range" min="0.02" max="0.3" step="0.02"><output></output></div>
+    <p class="cap"></p></div>`;
+  const svg=$('svg',el),si=$('#op-steps',el),li=$('#op-lam',el);si.value=steps;li.value=lam;
+  function draw(){
+    const runs=OPTIMIZERS.map(op=>({...op,path:simulateOptimizer(op.id,{eta,lam,steps,busy})}));
+    const top=busy?2.1:1.05,X=t=>(40+t/steps*270).toFixed(1),Y=w=>(160-Math.max(-.05,Math.min(top,w))/top*148).toFixed(1);
+    let s='';(busy?[0,.5,1,1.5,2]:[0,.25,.5,.75,1]).forEach(v=>s+=`<line class="g" x1="40" y1="${Y(v)}" x2="312" y2="${Y(v)}"/><text x="34" y="${+Y(v)+4}" text-anchor="end">${v}</text>`);
+    s+=`<text x="312" y="175" text-anchor="end">step ${steps}</text><text x="40" y="175">0</text>`;
+    if(busy)s+=`<line class="goal" x1="40" y1="${Y(2/(1+lam))}" x2="312" y2="${Y(2/(1+lam))}"/><text class="goalt" x="44" y="${+Y(2/(1+lam))+13}">L2 optimum 2/(1+λ)</text>`;
+    const stride=Math.max(1,Math.floor(steps/150));
+    runs.forEach(r=>s+=`<path class="opl ${r.cls}" d="${r.path.filter((_,i)=>i%stride===0||i===steps).map((w,i,a)=>(i?'L':'M')+X(i===a.length-1?steps:i*stride)+' '+Y(w)).join('')}"/>`);
+    svg.innerHTML=s;
+    $('.optlegend',el).innerHTML=runs.map(r=>`<div class="${r.cls}"><i></i><span>${r.name}</span><b>${r.path[steps].toFixed(3)}</b></div>`).join('');
+    si.nextElementSibling.textContent=steps;li.nextElementSibling.textContent=lam.toFixed(2);
+    $('.cap',el).textContent=busy?`The loss pulls this weight toward 2. η = ${eta}. Watch which rules settle at the L2 optimum ${(2/(1+lam)).toFixed(3)} and which stay near 2.`:`The loss never touches this weight; only regularization moves it. η = ${eta}, so pure decay leaves (1 − ηλ)${sup(steps)} = ${((1-eta*lam)**steps).toFixed(3)}. Three of the rules land exactly on that line.`;
+    $$('[data-b]',el).forEach(b=>b.setAttribute('aria-pressed',(b.dataset.b==='1')===busy));
+  }
+  $$('[data-b]',el).forEach(b=>b.addEventListener('click',()=>{busy=b.dataset.b==='1';sfx.tap();draw()}));
+  si.addEventListener('input',()=>{steps=+si.value;draw()});li.addEventListener('input',()=>{lam=+li.value;draw()});
+  draw();
+  return{solved:()=>true};
 };

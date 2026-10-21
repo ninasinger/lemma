@@ -154,6 +154,105 @@ check(np.allclose((hs * (rng.random(hs.shape) < keep) / keep).mean(axis=0), 2.0,
 x = np.zeros((32, 256))
 check(((x * (rng.random(x.shape) < 0.9) / 0.9) @ np.zeros((128, 256)).T).shape == (32, 128), "dr-3 dropout then layer")
 check(np.isclose(2.0 / 0.8, 2.5), "dr-3 survivor value")
+k, h0 = 0.8, 2.0
+samples = h0 * (rng.random(400_000) < k) / k
+check(abs(samples.mean() - h0) < 0.01 and abs(samples.var() - h0**2 * (1 - k) / k) < 0.02, "dr-3 mean h, variance h^2(1-k)/k")
+check(np.isclose(h0**2 * (1 - k) / k, 1.0), "dr-3 variance example = 1.0")
+sig = lambda z: 1 / (1 + np.exp(-z))
+check(abs(sig(samples).mean() - sig(h0)) > 0.01, "dr-3 E[f(z)] != f(E[z]) for a nonlinearity")
+
+# ---------- Matrices: the silent broadcasting bug ----------
+check((np.zeros((100, 1)) - np.zeros(100)).shape == (100, 100), "mx-5 (n,1) - (n,) -> (n,n)")
+check((np.zeros((100, 1)).squeeze(1) - np.zeros(100)).shape == (100,), "mx-5 squeeze fixes it")
+
+# ---------- SVD precision fixes ----------
+check(np.linalg.matrix_rank(np.diag([3.0, 0.0])) == 1 and np.linalg.matrix_rank(np.zeros((2, 2))) == 0, "svd sigma2=0 gives rank 1 only if sigma1>0")
+I2 = np.eye(2)
+a, b = np.array([1.0, 0.0]), np.array([1.0, 1.0])
+check(np.allclose(I2 @ a, a) and np.allclose(I2 @ b, b) and a @ b != 0, "repeated eigenvalue: eigenvectors need not be orthogonal")
+A = rng.normal(size=(30, 20))
+U, S, Vt = np.linalg.svd(A, full_matrices=False)
+k_ = 5
+Ak = U[:, :k_] * S[:k_] @ Vt[:k_]
+check(np.isclose(np.linalg.norm(A - Ak, "fro"), np.sqrt((S[k_:] ** 2).sum())), "Eckart-Young Frobenius error")
+check(np.isclose(np.linalg.norm(A - Ak, 2), S[k_]), "Eckart-Young spectral error")
+other = rng.normal(size=(30, k_)) @ rng.normal(size=(k_, 20))
+check(np.linalg.norm(A - other, "fro") > np.linalg.norm(A - Ak, "fro"), "a random rank-k matrix is worse")
+
+# ---------- Ridge: units, sum vs mean, intercepts, conditioning ----------
+n, d = 1000, 6
+X = rng.normal(size=(n, d)) + 3.0
+y = X @ rng.normal(size=d) + 2.0 + rng.normal(size=n)
+ridge = lambda X, y, lam: np.linalg.solve(X.T @ X + lam * np.eye(X.shape[1]), X.T @ y)
+lam_b = 0.01
+w_mean = np.linalg.solve(X.T @ X / n + lam_b * np.eye(d), X.T @ y / n)
+check(np.allclose(ridge(X, y, n * lam_b), w_mean), "l2-3 lambda_sum = n * lambda_mean")
+lam = 5.0
+w_ridge = ridge(X, y, lam)
+grad = 2 * X.T @ (X @ w_ridge - y) + 2 * lam * w_ridge
+check(np.allclose(grad, 0, atol=1e-6), "l2-3 closed form zeroes the gradient")
+Aaug = np.vstack([X, np.sqrt(lam) * np.eye(d)])
+baug = np.concatenate([y, np.zeros(d)])
+check(np.allclose(np.linalg.lstsq(Aaug, baug, rcond=None)[0], w_ridge), "l2-3 augmented lstsq = ridge")
+Xa = np.column_stack([np.ones(n), X])
+P = np.eye(d + 1)
+P[0, 0] = 0
+w_int = np.linalg.solve(Xa.T @ Xa + lam * P, Xa.T @ y)
+mx_, my_ = X.mean(axis=0), y.mean()
+w_c = ridge(X - mx_, y - my_, lam)
+check(np.allclose(w_int[1:], w_c) and np.isclose(w_int[0], my_ - mx_ @ w_c), "l2-3 unpenalized intercept = centering")
+
+# ---------- Generalization: bias-variance decomposition ----------
+f = lambda x: np.sin(np.pi * x)
+sigma, N, K, deg, x0 = 0.35, 20, 4000, 3, 0.4
+preds, errs = np.empty(K), np.empty(K)
+for i in range(K):
+    xs = rng.uniform(-1, 1, N)
+    w = np.polyfit(xs, f(xs) + rng.normal(0, sigma, N), deg)
+    preds[i] = np.polyval(w, x0)
+    errs[i] = (f(x0) + rng.normal(0, sigma) - preds[i]) ** 2
+decomp = (f(x0) - preds.mean()) ** 2 + preds.var() + sigma**2
+check(abs(errs.mean() - decomp) / decomp < 0.06, "gen-1 E[(y - f_hat)^2] = bias^2 + var + sigma^2")
+check(np.isclose(0.04 + 0.09 + 0.25, 0.38), "gen-1 example sum")
+check(1 - 0.02 == 0.98, "gen-3 majority-class accuracy")
+
+# ---------- Weight decay: five optimizers (same rules as the optim widget) ----------
+def run_opt(opt, grad_fn, w0, steps, eta=0.01, lam=0.1, b1=0.9, b2=0.999, eps=1e-8, mu=0.9):
+    w = np.array(w0, float)
+    m, v, buf = np.zeros_like(w), np.zeros_like(w), np.zeros_like(w)
+    for t in range(1, steps + 1):
+        g = grad_fn(w)
+        if opt == "sgd":
+            w = w - eta * (g + lam * w)
+        elif opt == "mom":
+            buf = mu * buf + (g + lam * w)
+            w = w - eta * buf
+        elif opt == "momdec":
+            buf = mu * buf + g
+            w = w - eta * buf - eta * lam * w
+        elif opt == "adaml2":
+            gg = g + lam * w
+            m, v = b1 * m + (1 - b1) * gg, b2 * v + (1 - b2) * gg**2
+            w = w - eta * (m / (1 - b1**t)) / (np.sqrt(v / (1 - b2**t)) + eps)
+        else:  # AdamW, PyTorch order: decay first, then the Adam step on the data gradient
+            w = w * (1 - eta * lam)
+            m, v = b1 * m + (1 - b1) * g, b2 * v + (1 - b2) * g**2
+            w = w - eta * (m / (1 - b1**t)) / (np.sqrt(v / (1 - b2**t)) + eps)
+    return w
+
+one = lambda opt: run_opt(opt, lambda w: np.array([1.0, 0.0]), [1.0, 1.0], 1)
+check(np.allclose(one("adaml2"), [0.99, 0.99]), "wd-2 Adam+L2 first step = [0.99, 0.99]")
+check(np.allclose(one("adamw"), [0.989, 0.999]), "wd-2 AdamW first step = [0.989, 0.999]")
+quiet = {o: run_opt(o, lambda w: np.zeros(1), [1.0], 200)[0] for o in ["sgd", "mom", "momdec", "adaml2", "adamw"]}
+check([round(quiet[o], 3) for o in ["sgd", "mom", "momdec", "adaml2", "adamw"]] == [0.819, 0.120, 0.819, 0.016, 0.819], "wd-2 unused weight after 200 steps")
+busy = {o: run_opt(o, lambda w: w - 2.0, [1.0], 2000)[0] for o in ["sgd", "mom", "momdec", "adaml2", "adamw"]}
+check(all(np.isclose(busy[o], 2 / 1.1, atol=1e-3) for o in ["sgd", "mom", "adaml2"]), "wd-2 L2 rules converge to 2/(1+lambda)")
+check(round(busy["momdec"], 3) == 1.980 and np.isclose(busy["momdec"], 2 / (1 + 0.1 * (1 - 0.9)), atol=1e-3), "wd-2 decoupled momentum = L2 with lambda*(1-mu)")
+check(round(busy["adamw"], 2) == 1.98, "wd-2 AdamW busy weight ~ 1.98")
+check(np.isclose(np.prod(1 - 0.1 * 1e-3 * np.ones(1000)), 0.905, atol=5e-4), "wd-2 constant-lr total decay ~ 0.905")
+cos_lr = 1e-3 * 0.5 * (1 + np.cos(np.pi * np.arange(1000) / 1000))
+check(np.isclose(np.prod(1 - 0.1 * cos_lr), 0.951, atol=5e-4), "wd-2 cosine total decay ~ 0.951")
+check(np.isclose((1 - 0.05 * 1e-3) ** 2000, 0.9048, atol=1e-4), "wd-2 numeric question 0.9048")
 
 # ---------- PyTorch (optional) ----------
 try:

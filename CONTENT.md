@@ -28,8 +28,22 @@ export default {
 | `num` | `q`, `a`, `tol`, optional `suf` | Accepts answers within `tol`. |
 | `shape` | `q`, `code`, `a`, `ex`, `err` | Predict a NumPy shape. `a` is like `'(n, d)'`, `'(3,)'`, `'()'`, or `'error'` (then set `err: true`). |
 | `match` | `q`, `p` (pairs), `ex` | Tap-to-match pairs. |
+| `explain` | `kind`, `q`, `model`, `rubric`, optional `secs` | Open-ended interview practice. The learner answers (typed or out loud) with a timer, then sees the model answer and ticks the rubric points they covered. Under 60% coverage counts as a miss for accuracy; no hearts are lost. |
 
 Any step can also carry `code`, which is shown as a highlighted Python block under the question.
+
+## Four kinds of practice
+
+Short recall builds memory; interviews test whether you can produce and defend an answer. For each important concept, aim for all four:
+
+| `kind` | Prompt style | Example |
+| --- | --- | --- |
+| `recall` | State it | “Write the AdamW update.” |
+| `derive` | Show it | “Show exactly when L2 and decay are equivalent.” |
+| `diagnose` | Explain an observation | “A learning-rate change alters shrinkage. Why?” |
+| `defend` | Choose and justify under constraints | “Pick a regularization experiment for a fixed budget.” |
+
+(`code` is reserved for implementation exercises.) Write rubrics as 3–5 observable points (“Gives [0.99, 0.99] for Adam + L2”), not vague ones (“understands Adam”). Teach train/validation patterns as **clues under stated assumptions**, never as verdicts.
 
 ## Rich text
 
@@ -40,7 +54,7 @@ Any step can also carry `code`, which is shown as a highlighted Python block und
 
 ## Widgets
 
-`pca`, `svd`, `img`, `ridge`, `contour`, `decay`, `drop`, `scree`, `dot`, `matmul`, `axis`. They live in `public/js/widgets.js`; each takes options (`wo`) and returns `{ solved() }`. `matmul` is the most reusable:
+`pca`, `svd`, `img`, `ridge`, `contour`, `decay`, `drop`, `scree`, `dot`, `matmul`, `axis`, `biasvar`, `curves`, `optim`. They live in `public/js/widgets.js`; each takes options (`wo`) and returns `{ solved() }`. `matmul` is the most reusable:
 
 ```js
 { w: 'matmul', wo: { A: [[1, 2], [3, 4]], B: [[5], [6]], names: ['W', 'x', 'Wx'],
@@ -52,6 +66,8 @@ Any step can also carry `code`, which is shown as a highlighted Python block und
 ## Flashcards
 
 Every lesson should end with 3–6 cards: `{ id, front, back }`, both HTML. A card is unlocked when its lesson is finished, then scheduled with Anki's SM-2 rules (`public/js/srs.js`). Good cards ask one thing, have a short answer, and include at least one about **shapes** whenever code is involved.
+
+A card can also be an interview card: add `kind`, `rubric` (3–5 points) and optionally `secs`. In review it shows an answer box and a timer, and after the reveal the rubric; the share of points ticked suggests a grade (under 50% Again, under 80% Hard, otherwise Good).
 
 ## Checking your work
 

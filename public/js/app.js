@@ -1,4 +1,4 @@
-import { $, $$, reduced, shuffle, esc, rich, highlight, disposeAll, sameShape, ICON, mascot, sound, sfx } from './util.js';
+import { $, $$, reduced, shuffle, esc, rich, highlight, onDispose, disposeAll, sameShape, ICON, mascot, sound, sfx } from './util.js';
 import { W } from './widgets.js';
 import { schedule, preview, formatInterval, dayStart, DAY, MINUTE } from './srs.js';
 import { UNITS } from './content/index.js';
@@ -200,15 +200,33 @@ const RENDER={
       else{const a=sel;sel=null;[a,b].forEach(x=>{x.classList.remove('sel');x.classList.add('bad')});LS.wrong.add(s);sfx.bad();setTimeout(()=>[a,b].forEach(x=>x.classList.remove('bad')),450)}
     }
     setMain('Check',false);return{};
+  },
+  // Open-ended interview practice: answer first (typed or out loud), then compare with a model
+  // answer and tick the rubric points you actually covered. No hearts at stake.
+  explain(w,s){
+    w.insertAdjacentHTML('beforeend',`${head(s)}${answerBox(s.secs)}<div class="xmodel" hidden><div class="fdiv"><span>Model answer</span></div><div class="prose">${rich(s.model)}</div>${rubricBox(s.rubric)}</div>`);
+    const stop=startTimer($('.xtimer',w),s.secs);
+    setMain('Show model answer',true);
+    return{explain:true,
+      reveal(){stop();$('.xmodel',w).hidden=false;highlight(w);sfx.flip();$('.xmodel',w).scrollIntoView({block:'start',behavior:reduced.matches?'auto':'smooth'})},
+      score(){const b=$$('.rubric input',w);return b.filter(x=>x.checked).length/b.length}};
   }
 };
 RENDER.tf=RENDER.mc;
+const KIND={recall:'Recall',derive:'Derive',diagnose:'Diagnose',defend:'Defend',code:'Code it'};
+const answerBox=secs=>`<div class="xans"><label class="sr" for="x-ans">Your answer</label><textarea id="x-ans" rows="5" placeholder="Answer in writing or out loud, then compare with the model answer."></textarea><p class="xtimer" aria-hidden="true"></p></div>`;
+const rubricBox=items=>`<div class="rubric"><p class="eyebrow">Tick what your answer covered</p>${items.map(r=>`<label class="rb"><input type="checkbox"><span>${rich(r)}</span></label>`).join('')}</div>`;
+function startTimer(el,secs=90){
+  const t0=Date.now(),tick=()=>{const s=Math.floor((Date.now()-t0)/1000);el.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')} · aim for about ${secs} s`;el.classList.toggle('over',s>secs)};
+  tick();const id=setInterval(tick,1000);const stop=()=>clearInterval(id);onDispose(stop);return stop;
+}
 function focusSoon(inp){if(matchMedia('(pointer: coarse)').matches)return;setTimeout(()=>{try{inp.focus({preventScroll:true})}catch(e){}},60)}
 const KICK={learn:'New idea',mc:'Pick one',tf:'True or false?',num:'Work it out',shape:'Predict the shape',match:'Tap the matching pairs',task:'Try it yourself'};
+const kicker=s=>s.t==='explain'?`${KIND[s.kind]} · say it or write it`:KICK[s.t];
 function renderStep(){
   disposeAll();
   const s=LS.q[LS.i],stg=$('#stage');stg.innerHTML='';LS.phase='answer';LS.ctrl=null;setBar('idle');updateTop();
-  const w=document.createElement('div');w.className='step';w.innerHTML=`<p class="kicker">${KICK[s.t]}</p>`;stg.appendChild(w);
+  const w=document.createElement('div');w.className='step';w.innerHTML=`<p class="kicker">${kicker(s)}</p>`;stg.appendChild(w);
   LS.ctrl=RENDER[s.t](w,s);highlight(w);window.scrollTo(0,0);
 }
 function reveal(ok,s,r){
@@ -219,6 +237,11 @@ function reveal(ok,s,r){
 }
 function onMain(){
   const b=$('#mainbtn');if(b.disabled||!LS)return;const s=LS.q[LS.i];
+  if(s.t==='explain'){
+    if(LS.phase==='answer'){LS.ctrl.reveal();LS.phase='rubric';setMain('Continue',true);return}
+    const covered=LS.ctrl.score();if(covered<0.6)LS.wrong.add(s);
+    LS.done++;(covered>=0.6?sfx.ok:sfx.tap)();return next();
+  }
   if(LS.phase==='answer'){
     if(s.t==='learn'){LS.done++;return next()}
     if(!LS.ctrl.check)return;
@@ -287,18 +310,34 @@ function renderRvCounts(){
   $('#rv-counts').setAttribute('aria-label',`${n.new} new, ${n.learn} learning, ${n.review} to review`);
 }
 function renderCard(){
+  disposeAll();
   const card=RS.queue[0];RS.shown=false;
   $('#review').style.cssText=`--uc:var(--${card.u.c});--ucd:var(--${card.u.c}-d)`;
-  $('#rv-kicker').textContent=`${card.u.title} · ${card.l.title}`;
+  $('#rv-kicker').textContent=card.kind?`${KIND[card.kind]} · ${card.u.title}`:`${card.u.title} · ${card.l.title}`;
   $('#rv-front').innerHTML=rich(card.front);$('#rv-back').innerHTML=rich(card.back);
+  // Cards with a rubric are open-ended: answer first, then tick what you covered.
+  const deep=$('#rv-deep'),rub=$('#rv-rubric');deep.hidden=!card.rubric;rub.hidden=true;
+  if(card.rubric){
+    deep.innerHTML=answerBox(card.secs);startTimer($('.xtimer',deep),card.secs);
+    rub.innerHTML=rubricBox(card.rubric);
+    $$('input',rub).forEach(x=>x.addEventListener('change',suggestGrade));
+  }
+  $$('#rv-grades .grade').forEach(b=>b.classList.remove('suggest'));
   $('#rv-back').hidden=true;$('#rv-hr').hidden=true;highlight($('#rv-card'));
   $('#rv-show').hidden=false;$('#rv-grades').hidden=true;
   const pct=Math.round(RS.reviewed/(RS.reviewed+RS.queue.length)*100);$('#rv-bar').style.width=pct+'%';$('#review .pbar').setAttribute('aria-valuenow',pct);
   renderRvCounts();window.scrollTo(0,0);$('#rv-show').focus({preventScroll:true});
 }
+// Rubric coverage suggests a grade: under half is Again, under 80% Hard, otherwise Good.
+function suggestGrade(){
+  const boxes=$$('#rv-rubric input'),covered=boxes.filter(x=>x.checked).length/boxes.length;
+  const g=covered<0.5?1:covered<0.8?2:3;
+  $$('#rv-grades .grade').forEach(b=>b.classList.toggle('suggest',+b.dataset.g===g));
+}
 function showAnswer(){
-  if(!RS||RS.shown)return;RS.shown=true;
+  if(!RS||RS.shown)return;RS.shown=true;disposeAll();
   $('#rv-back').hidden=false;$('#rv-hr').hidden=false;$('#rv-show').hidden=true;$('#rv-grades').hidden=false;
+  if(RS.queue[0].rubric){$('#rv-rubric').hidden=false;suggestGrade()}
   const p=preview(rv[RS.queue[0].id]||null);
   $$('#rv-grades .grade').forEach((b,i)=>{$('span',b).textContent=formatInterval(p[i]);b.setAttribute('aria-label',`${$('b',b).textContent}: next in ${formatInterval(p[i])}`)});
   sfx.flip();$('#rv-grades .g3').focus({preventScroll:true});
