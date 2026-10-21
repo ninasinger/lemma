@@ -2,9 +2,24 @@
 
 Lemma is an installable web app (a PWA). Once it is served over **HTTPS** from your domain, you can add it to your phone's home screen, where it opens full-screen with its own icon, like a native app. No app store is involved.
 
-## 1. Run it on a server
+There are two ways to host it. **Netlify** needs no server to look after. A server of your own (further down) suits you if you'd rather keep everything on one machine.
 
-Any small Linux VPS works (1 vCPU, 512 MB RAM is plenty). Lemma stores everything in one JSON file, so the server needs a persistent disk.
+## Netlify
+
+On Netlify, the pages in `public/` are served from Netlify's CDN, and the API runs as a Netlify Function (`netlify/functions/api.mjs`) that stores accounts, progress and reviews in **Netlify Blobs**. `netlify.toml` already holds every setting.
+
+1. **Create the site.** At [app.netlify.com](https://app.netlify.com), choose **Add new project → Import an existing project → GitHub**. Give Netlify access to the `lemma` repository only, and pick it. The build settings fill in from `netlify.toml` (publish `public`, build command `npm test`, so a failing test stops a bad deploy).
+2. **Set your account.** Before the first deploy, or right after, open **Project configuration → Environment variables** and add `SEED_USERNAME` and `SEED_PASSWORD`. Mark the password as a secret. The first request after deploying creates that account if it doesn't exist yet. It never changes an existing account, so you can delete both variables once you've signed in.
+3. **Deploy.** Netlify builds and gives you an address like `lemma-1234.netlify.app` with HTTPS. Sign in there to check.
+4. **Add your domain.** Under **Domain management → Add a domain**, enter the domain you bought. If you bought it through Netlify there's nothing else to do. Otherwise either switch the domain's nameservers to the ones Netlify lists, or add the DNS records it shows at your registrar. Netlify issues the HTTPS certificate automatically once DNS resolves.
+
+Every push to `main` redeploys. Your data lives in the project's Blobs store named `lemma` and is kept across deploys.
+
+**Your local data doesn't move automatically.** The Netlify account starts fresh. Lessons are quick to redo; ask if you want a one-off import of `data/db.json`.
+
+## A server of your own
+
+Any small Linux VPS works (1 vCPU, 512 MB RAM is plenty). This setup stores everything in one JSON file, so the server needs a persistent disk.
 
 ### Option A: Docker
 

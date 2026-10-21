@@ -5,7 +5,7 @@
   "description": "Bite-size lessons and spaced-repetition reviews for the math behind machine learning: matrices, PCA, SVD, regularization and dropout.",
   "type": "module",
   "engines": {
-    "node": ">=20.6"
+    "node": ">=22.12"
   },
   "scripts": {
     "start": "node server.js",
@@ -13,5 +13,8 @@
     "test": "node --test",
     "verify:py": ".venv/bin/python scripts/verify_numpy.py",
     "icons": "python3 scripts/make_icons.py"
+  },
+  "dependencies": {
+    "@netlify/blobs": "11.1.3"
   }
 }

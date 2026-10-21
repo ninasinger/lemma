@@ -16,7 +16,7 @@ Each lesson mixes interactive widgets (drag vectors, tap matrix entries, collaps
 
 ## Run it
 
-Requires Node.js 20.6 or newer. There are no npm dependencies.
+Requires Node.js 22.12 or newer. The only dependency, `@netlify/blobs`, is used when deployed on Netlify.
 
 ```bash
 cp .env.example .env        # then set SEED_USERNAME and SEED_PASSWORD
@@ -24,7 +24,7 @@ npm run seed                # creates that user (or resets their password)
 npm start                   # http://127.0.0.1:3000
 ```
 
-Set `PORT`, `HOST`, `DATA_FILE` or `TRUST_PROXY=1` to change where it listens, where data is stored, and whether to trust a reverse proxy's client address. **[DEPLOY.md](DEPLOY.md)** covers putting it on a domain with HTTPS and installing it on a phone.
+Set `PORT`, `HOST`, `DATA_FILE` or `TRUST_PROXY=1` to change where it listens, where data is stored, and whether to trust a reverse proxy's client address. **[DEPLOY.md](DEPLOY.md)** covers deploying to Netlify or your own server, adding a domain with HTTPS, and installing it on a phone.
 
 ## Project layout
 
@@ -36,8 +36,11 @@ Set `PORT`, `HOST`, `DATA_FILE` or `TRUST_PROXY=1` to change where it listens, w
 | `public/js/widgets.js` | Interactive widgets. |
 | `public/js/content/` | One file per unit: lessons, questions and flashcards. See **[CONTENT.md](CONTENT.md)**. |
 | `public/sw.js`, `manifest.webmanifest`, `icons/` | What makes it an installable, offline-capable app. |
-| `server.js` | Node HTTP server: static files plus the JSON API. |
-| `lib/` | Storage, password hashing, and validation and merging for progress and reviews. |
+| `lib/api.js` | The JSON API, written against web-standard Request/Response so it runs anywhere. |
+| `server.js` | Node server for local use or your own host: static files, plus `/api/*` through `lib/api.js`. |
+| `netlify/functions/api.mjs`, `netlify.toml` | The same API as a Netlify Function, plus the Netlify build and headers. |
+| `lib/store.js`, `lib/blobstore.js` | Storage: a JSON file locally, Netlify Blobs when deployed. Same get/put/del interface. |
+| `lib/` (rest) | Password hashing, and validation and merging for progress and reviews. |
 | `scripts/verify_numpy.py` | Runs every NumPy claim the lessons make. |
 
 ## API
@@ -64,7 +67,7 @@ Reviews are written to an outbox in the browser before they are sent, so grading
 ## Tests
 
 ```bash
-npm test                 # server, scheduler, service worker, content checks
+npm test                 # API on both backends, scheduler, service worker, content checks
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 npm run verify:py        # 91 NumPy checks: shapes, gradients, optimizer numbers, decompositions
 ```
