@@ -34,7 +34,7 @@ Any step can also carry `code`, which is shown as a highlighted Python block und
 
 ## Passing a lesson
 
-A lesson passes only at 100%: every question right the first time. A miss still comes back at the end of the run, but the lesson stays unpassed, its cards stay locked, and the next unit stays locked until every lesson before it has passed. A lesson passed once stays passed.
+A lesson passes when every question has been answered right. A missed question (including an interview prompt scored under 60%) comes back at the end of the run with new numbers until it is, so only the misses are ever asked again; running out of hearts ends the run. A run with no misses is flawless. The next unit stays locked until every lesson before it has passed.
 
 ## Fresh numbers
 

@@ -151,7 +151,7 @@ function renderPath(){
     u.lessons.forEach(l=>{const done=!!st.done[l.id],cur=!!nx&&nx.l===l,off=[0,1,0,-1][gi%4]*58;gi++;
       const li=document.createElement('li');li.className='node'+(done?' done':'')+(cur?' cur':'')+(open?'':' locked');li.style.setProperty('--x',off+'px');
       li.innerHTML=`${cur?'<span class="bubble">Start</span>':''}<button type="button" class="nbtn" aria-label="${esc(l.title)}${done?', passed':open?'':', locked'}">${!open?ICON.lock:done&&!u.review?ICON.check:(u.review?ICON.trophy:(cur?ICON.play:ICON.star))}</button><span class="nlabel">${l.title}</span>`;
-      $('button',li).addEventListener('click',()=>open?startLesson(u,l):toast(`Pass every lesson in ${blocker.title} with 100% to unlock ${u.review?'the mixed review':u.title}.`));ol.appendChild(li)});
+      $('button',li).addEventListener('click',()=>open?startLesson(u,l):toast(`Pass every lesson in ${blocker.title} to unlock ${u.review?'the mixed review':u.title}.`));ol.appendChild(li)});
     box.appendChild(sec);
   });
 }
@@ -186,9 +186,11 @@ const RENDER={
     return{pick,check(){const ok=opts[sel].c;$$('.opt',box).forEach((b,j)=>{b.classList.remove('sel');if(opts[j].c)b.classList.add('right');else if(j===sel)b.classList.add('wrong');b.disabled=true});return{ok,ans:opts.find(o=>o.c).t}}};
   },
   num(w,s){
-    w.insertAdjacentHTML('beforeend',`${head(s)}<div class="numrow"><input id="num-in" class="numin" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="Your answer" aria-label="Your answer">${s.suf?`<span class="suf">${s.suf}</span>`:''}</div>`);
-    const inp=$('input',w);inp.addEventListener('input',()=>setMain('Check',inp.value.trim()!==''));focusSoon(inp);setMain('Check',false);
-    return{check(){const v=parseFloat(inp.value.replace(/[,%\s]/g,'').replace('−','-'));const ok=Number.isFinite(v)&&Math.abs(v-s.a)<=(s.tol||0)+1e-9;inp.disabled=true;inp.classList.add(ok?'right':'wrong');return{ok,ans:s.a.toLocaleString('en-US').replace('-','−')+(s.suf||'')}}};
+    w.insertAdjacentHTML('beforeend',`${head(s)}<div class="numrow"><button type="button" class="signbtn" aria-label="Switch the sign of your answer">±</button><input id="num-in" class="numin" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="Your answer" aria-label="Your answer">${s.suf?`<span class="suf">${s.suf}</span>`:''}</div>`);
+    const inp=$('input',w),sign=$('.signbtn',w);inp.addEventListener('input',()=>setMain('Check',inp.value.trim()!==''));focusSoon(inp);setMain('Check',false);
+    // Phone decimal keypads have no minus key, so ± flips the sign of whatever is typed.
+    sign.addEventListener('click',()=>{if(LS.phase!=='answer')return;const v=inp.value.trim();inp.value=/^[-−]/.test(v)?v.replace(/^[-−]\s*/,''):'−'+v;inp.dispatchEvent(new Event('input'));inp.focus({preventScroll:true})});
+    return{check(){sign.disabled=true;const v=parseFloat(inp.value.replace(/[,%\s]/g,'').replace('−','-'));const ok=Number.isFinite(v)&&Math.abs(v-s.a)<=(s.tol||0)+1e-9;inp.disabled=true;inp.classList.add(ok?'right':'wrong');return{ok,ans:s.a.toLocaleString('en-US').replace('-','−')+(s.suf||'')}}};
   },
   shape(w,s){
     w.insertAdjacentHTML('beforeend',`${head(s)}<div class="numrow"><input id="shape-in" class="numin shapein" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="(n, d)" aria-label="Shape, written like (n, d)"></div><p class="hint">Write it like <code>(500, 3)</code> or <code>(3,)</code>. Use <code>()</code> for a single number${s.err?' and <code>error</code> if the line fails':''}.</p>`);
@@ -233,7 +235,7 @@ function renderStep(){
   disposeAll();
   // vary() draws fresh numbers each time, so a missed question comes back as a new instance.
   const s=LS.cur=vary(LS.q[LS.i]),stg=$('#stage');stg.innerHTML='';LS.phase='answer';LS.ctrl=null;setBar('idle');updateTop();
-  const w=document.createElement('div');w.className='step';w.innerHTML=`<p class="kicker">${kicker(s)}</p>`;stg.appendChild(w);
+  const w=document.createElement('div');w.className='step';w.innerHTML=`<p class="kicker">${LS.i>=LS.total?'Missed earlier · ':''}${kicker(s)}</p>`;stg.appendChild(w);
   LS.ctrl=RENDER[s.t](w,s);highlight(w);window.scrollTo(0,0);
 }
 function reveal(ok,s,r){
@@ -242,14 +244,14 @@ function reveal(ok,s,r){
   else{sfx.bad();setBar('bad',{t:'Not quite',x:(r.ans!=null?`<p>Answer: <b>${r.ans}</b></p>`:'')+(s.ex?`<p>${s.ex}</p>`:'')+missNote()});$('#hearts').classList.remove('hit');void $('#hearts').offsetWidth;$('#hearts').classList.add('hit')}
   setMain('Continue',true);updateTop();$('#mainbtn').focus({preventScroll:true});
 }
-// Said once, on the first miss of a lesson not yet passed: this run can no longer pass.
-const missNote=()=>LS.wrong.size===1&&!st.done[LS.l.id]?'<p class="miss-note">This run can’t pass now: a lesson needs 100%. Finish it for practice, then go for a clean run. The numbers change every time.</p>':'';
+const missNote=()=>'<p class="miss-note">It comes back at the end with new numbers. Get it right then and the lesson still passes.</p>';
 function onMain(){
   const b=$('#mainbtn');if(b.disabled||!LS)return;const t=LS.q[LS.i],s=LS.cur;
   if(s.t==='explain'){
     if(LS.phase==='answer'){LS.ctrl.reveal();LS.phase='rubric';setMain('Continue',true);return}
-    const covered=LS.ctrl.score();if(covered<0.6)LS.wrong.add(t);
-    LS.done++;(covered>=0.6?sfx.ok:sfx.tap)();return next();
+    // Under 60% of the rubric is a miss: the prompt comes back at the end of the run, like any other.
+    const covered=LS.ctrl.score();if(covered<0.6){LS.wrong.add(t);LS.q.push(t);sfx.tap();toast('This one comes back at the end of the lesson.');return next()}
+    LS.done++;sfx.ok();return next();
   }
   if(LS.phase==='answer'){
     if(s.t==='learn'){LS.done++;return next()}
@@ -257,7 +259,7 @@ function onMain(){
     const r=LS.ctrl.check();
     if(r.ok)return reveal(true,s,r);
     LS.wrong.add(t);
-    if(s.t==='task'){sfx.bad();LS.phase='retry';setBar('retry',{t:'Not yet',x:s.hint+missNote()});setMain('Try again',true);return}
+    if(s.t==='task'){sfx.bad();LS.phase='retry';setBar('retry',{t:'Not yet',x:s.hint});setMain('Try again',true);return}
     LS.hearts--;LS.q.push(t);reveal(false,s,r);
   }else if(LS.phase==='retry'){LS.phase='answer';setBar('idle');setMain('Check',true)}
   else{if(LS.hearts<=0)return fail();next()}
@@ -271,25 +273,14 @@ function doneScreen({title,sub,xp,accLabel,acc,cards}){
   $('#done-alt').hidden=true;$('#done-go').textContent='Continue';$('#done-go').onclick=()=>{LS=null;RS=null;show('path');renderPath()};
   show('done');sfx.win();confetti();$('#done-go').focus({preventScroll:true});
 }
-// Only a perfect run passes. Anything less still earns XP for the practice, but the lesson stays
-// unpassed, its cards stay locked and so does the next unit.
+// Reaching the end means every question has been answered right: a miss comes back, with new
+// numbers, until it is. That passes the lesson. Only the questions missed are ever asked again.
 function finish(){
-  disposeAll();const l=LS.l,perfect=LS.wrong.size===0,xp=(l.id==='review'?20:10)+(perfect?5:0),firstTime=perfect&&!st.done[l.id];
-  if(perfect)st.done[l.id]=true;st.xp+=xp;bumpStreak();save();
-  const acc=LS.qs?Math.round(100*(LS.qs-LS.wrong.size)/LS.qs):100,n=(l.cards||[]).length;
-  if(!perfect)return notPassed(acc,xp);
-  doneScreen({title:'Flawless lesson!',sub:`${l.title} · ${LS.u.title}`,xp,accLabel:'Accuracy',acc:acc+'%',
+  disposeAll();const l=LS.l,missed=LS.wrong.size,perfect=!missed,xp=(l.id==='review'?20:10)+(perfect?5:0),firstTime=!st.done[l.id];
+  st.done[l.id]=true;st.xp+=xp;bumpStreak();save();
+  const acc=LS.qs?Math.round(100*(LS.qs-missed)/LS.qs):100,n=(l.cards||[]).length;
+  doneScreen({title:perfect?'Flawless lesson!':'Lesson passed!',sub:perfect?`${l.title} · ${LS.u.title}`:`You redid the ${missed} question${missed===1?'':'s'} you missed. ${l.title} · ${LS.u.title}`,xp,accLabel:perfect?'Accuracy':'First try',acc:acc+'%',
     cards:firstTime&&n?`${ICON.cards}<span><b>${n} flashcards</b> added to your reviews. They come back right before you’d forget them.</span>`:''});
-}
-function notPassed(acc,xp){
-  const u=LS.u,l=LS.l,kept=!!st.done[l.id];
-  $('#done').classList.add('fail');$('#done-mascot').innerHTML=mascot('mascot');
-  $('#done-t').textContent=`${acc}%: not passed yet`;
-  $('#done-sub').textContent=kept?'You passed this lesson before, so it stays passed. A clean run is still the goal.':'A lesson passes at 100%: every question right the first time. Try again; the numbers are new every run.';
-  $('#done-tiles').hidden=false;$('#d-xp').textContent='+'+xp;$('#d-acc-l').textContent='Accuracy';$('#d-acc').textContent=acc+'%';$('#d-st').textContent=st.streak+(st.streak===1?' day':' days');
-  $('#done-cards').hidden=true;$('#done-alt').hidden=false;$('#done-alt').onclick=()=>{LS=null;show('path');renderPath()};
-  $('#done-go').textContent='Try again';$('#done-go').onclick=()=>startLesson(u,l);
-  show('done');sfx.bad();$('#done-go').focus({preventScroll:true});
 }
 function fail(){
   disposeAll();const u=LS.u,l=LS.l;
