@@ -40,6 +40,24 @@ function fakeBlobs() {
   };
 }
 
+// Netlify gives each request its own short-lived Blobs token, and a store keeps the token it was
+// opened with. This hands out stores that fail like an expired token once renew() has issued a
+// newer one, the way a new request does.
+function expiringBlobs(store) {
+  let current = 0;
+  return {
+    renew: () => current++,
+    open() {
+      const token = current;
+      const guard = (fn) => async (...args) => {
+        if (token !== current) throw new Error('Failed to decode token: Token expired');
+        return fn(...args);
+      };
+      return { get: guard(store.get), getWithMetadata: guard(store.getWithMetadata), setJSON: guard(store.setJSON), delete: guard(store.delete) };
+    },
+  };
+}
+
 const ENV = { SEED_USERNAME: 'Tester', SEED_PASSWORD: 'correct horse battery' };
 const env = (vars) => (key) => vars[key];
 const production = { deploy: { context: 'production' } };
@@ -83,6 +101,17 @@ test('progress and reviews survive a cold start', async () => {
   assert.deepEqual((await second('GET', '/api/progress')).body.done, { 'mx-1': true });
   assert.deepEqual((await second('GET', '/api/reviews')).body.cards['mx-dot-def'], state);
   assert.ok(store.blobs.has('progress/tester') && store.blobs.has('reviews/tester'));
+});
+
+test('a warm function keeps working after the first request\'s Blobs token expires', async () => {
+  const blobs = expiringBlobs(fakeBlobs());
+  const call = client(netlifyHandler(() => blobs.open(), env(ENV)));
+  assert.equal((await call('POST', '/api/login', { username: 'tester', password: ENV.SEED_PASSWORD })).status, 200);
+  blobs.renew();
+  assert.equal((await call('GET', '/api/me')).status, 200);
+  assert.equal((await call('PUT', '/api/progress', { done: { 'mx-1': true }, xp: 15 })).status, 200);
+  blobs.renew();
+  assert.deepEqual((await call('GET', '/api/progress')).body.done, { 'mx-1': true });
 });
 
 test('the seed never overwrites an existing account', async () => {
