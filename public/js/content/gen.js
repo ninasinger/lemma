@@ -1,6 +1,30 @@
 // Unit: generalization and diagnosis. Train/validation patterns are taught as clues that hold
 // under stated assumptions, never as definitive classifications.
 
+import { num, py } from '../vary.js';
+
+// Fresh numbers every time a question or card is shown (see ../vary.js).
+const PARTS = [0.01, 0.02, 0.04, 0.05, 0.09, 0.1, 0.16, 0.2, 0.25];
+const gen = {
+  total(v) {
+    const [b, va, s] = [v.pick(PARTS), v.pick(PARTS), v.pick(PARTS)], t = +(b + va + s).toFixed(4);
+    const big = Math.max(b, va, s), what = big === s ? 'noise that no model can remove' : big === b ? 'bias: the model is systematically off' : 'variance: the model moves with the training set';
+    return { q: `At some x: bias² = ${num(b)}, variance = ${num(va)} and σ² = ${num(s)}. What is the expected squared error?`, a: t,
+      ex: `${num(b)} + ${num(va)} + ${num(s)} = ${num(t)}. Here the largest part is ${what}.`, py: `ans = ${b} + ${va} + ${s}` };
+  },
+  baseline(v) {
+    const p = v.pick([0.5, 1, 2, 3, 5, 10]), a = +(100 - p).toFixed(4);
+    return { q: `The positive class is ${num(p)}% of the data. What accuracy does “always predict negative” get?`, a,
+      ex: `${num(a)}%, with zero ability to find positives. On imbalanced data, report precision, recall or PR-AUC alongside accuracy.`,
+      py: `y = np.zeros(100000)\ny[:int(${p} * 1000)] = 1\nans = 100 * (y == 0).mean()` };
+  },
+  cFormula(v) {
+    const [b, va, s] = [v.pick(PARTS), v.pick(PARTS), v.pick(PARTS)], t = +(b + va + s).toFixed(4);
+    return { front: `Decompose the expected squared error at x. What is it when bias² = ${num(b)}, variance = ${num(va)} and σ² = ${num(s)}?`,
+      back: `bias² + variance + σ²:<br>(f(x) − E_D f̂(x))² + Var_D f̂(x) + σ². Here ${num(b)} + ${num(va)} + ${num(s)} = <b>${num(t)}</b>.`, a: t, py: `ans = ${b} + ${va} + ${s}` };
+  },
+};
+
 export default {
   id: 'gen',
   title: 'Generalization',
@@ -18,14 +42,14 @@ export default {
         { t: 'learn', title: 'Three sources of error', body: `<p>Suppose y = f(x) + ε, where the noise ε has mean 0 and variance σ². Your training set D is random, so the fitted model <span class="m">f̂_D</span> is random too. Under <b>squared loss</b>, the expected error at a point x, averaged over training sets and noise, splits exactly into three parts:</p><div class="eq">E[(y − f̂_D(x))²] = (f(x) − E_D[f̂_D(x)])² + Var_D[f̂_D(x)] + σ²</div><ul><li><b>Bias²</b>: how far the <em>average</em> fit is from the truth.</li><li><b>Variance</b>: how much the fit moves when the training set changes.</li><li><b>Noise</b> σ²: error that even the true f makes. No model removes it.</li></ul><p>This clean sum is specific to squared loss. Other losses have bias–variance analogues, but they don’t split this neatly.</p>` },
         { t: 'learn', title: 'Refit on forty datasets', body: '<p>Each gray curve is the same model class trained on a different random sample of 20 noisy points. The bold curve is their average. Slide the degree: low degrees miss the shape (bias), and high degrees chase each sample’s noise (variance).</p>', w: 'biasvar', wo: { d: 1 } },
         { t: 'task', title: 'Find the sweet spot', body: '<p>Find the polynomial degree with the <b>lowest expected error</b>.</p>', w: 'biasvar', wo: { d: 9 }, hint: 'Look for the bottom of the expected-error curve, where bias² has mostly flattened but variance hasn’t taken off yet.', ex: 'At the minimum, bias² is already small and variance is still small. With more data per training set, variance falls and the best degree moves higher.' },
-        { t: 'num', q: 'At some x: bias² = 0.04, variance = 0.09 and σ² = 0.25. What is the expected squared error?', a: 0.38, tol: 0.001, ex: '0.04 + 0.09 + 0.25 = 0.38. Here most of the error is noise that no model can remove.' },
+        { t: 'num', q: 'At some x: bias² = 0.04, variance = 0.09 and σ² = 0.25. What is the expected squared error?', a: 0.38, tol: 0.001, ex: '0.04 + 0.09 + 0.25 = 0.38. Here most of the error is noise that no model can remove.', gen: gen.total },
         { t: 'tf', q: 'Collecting more training data reduces the noise term σ².', a: false, ex: 'σ² belongs to the data-generating process: it’s the error even the true f makes. More data shrinks variance, never σ².' },
         { t: 'mc', q: 'A model’s predictions barely change between training sets, but they’re consistently too low in one region. Which term dominates there?', o: ['Bias²', 'Variance', 'Noise', 'None of them; the model is optimal'], ex: 'Stable but systematically wrong is the signature of bias.' },
         { t: 'explain', kind: 'derive', secs: 120, q: 'Derive the decomposition at a fixed x. Assume ε has mean 0 and variance σ², and is independent of the training set D.', model: `<p>Write f̂ for f̂_D(x) and f̄ = E_D[f̂], the average prediction. Then</p><div class="eq">y − f̂ = (f − f̄) + (f̄ − f̂) + ε</div><p>Square and take the expectation over D and ε:</p><ul><li>E[(f − f̄)²] = (f − f̄)², a constant: <b>bias²</b>.</li><li>E[(f̄ − f̂)²] = Var_D[f̂]: <b>variance</b>.</li><li>E[ε²] = σ²: <b>noise</b>.</li></ul><p>The cross terms vanish. Any term with a single ε averages to 0, because E[ε] = 0 and ε is independent of D. And 2(f − f̄)·E_D[f̄ − f̂] = 0, because E_D[f̂] = f̄.</p>`, rubric: ['Adds and subtracts the average prediction f̄ = E_D[f̂(x)]', 'Identifies the three squared terms as bias², variance and σ²', 'Shows the cross terms with ε vanish (E[ε] = 0, ε independent of D)', 'Shows the bias × deviation cross term vanishes because E_D[f̂ − f̄] = 0', 'Notes it holds for squared loss at a fixed x'] },
         { t: 'mc', q: 'Which change mainly targets variance?', o: ['More training data or stronger regularization', 'A bigger model', 'More input features', 'Training for longer'], ex: 'More data and regularization make the fit depend less on the particular sample. The others usually add capacity, which lowers bias but can raise variance.' },
       ],
       cards: [
-        { id: 'gen-bv-formula', front: 'Decompose the expected squared error at x.', back: 'bias² + variance + σ²:<br>(f(x) − E_D f̂(x))² + Var_D f̂(x) + σ².' },
+        { id: 'gen-bv-formula', front: 'Decompose the expected squared error at x.', back: 'bias² + variance + σ²:<br>(f(x) − E_D f̂(x))² + Var_D f̂(x) + σ².', gen: gen.cFormula },
         { id: 'gen-bv-bias', front: 'What is bias, in the bias–variance sense?', back: 'The gap between the truth and the prediction averaged over training sets: f(x) − E_D[f̂_D(x)].' },
         { id: 'gen-bv-var', front: 'What is variance, in the bias–variance sense?', back: 'How much the prediction at x moves when you redraw the training set: Var_D[f̂_D(x)].' },
         { id: 'gen-bv-noise', front: 'Can more data reduce σ²?', back: 'No. σ² is irreducible noise in y given x. More data reduces variance.' },
@@ -64,7 +88,7 @@ export default {
         { t: 'learn', title: 'Ways evaluation lies', body: '<ul><li><b>Leakage</b>: a feature that encodes the label, duplicates across the split, or the same user or time period on both sides. Validation looks great and production doesn’t.</li><li><b>Distribution shift</b>: deployment inputs (or the input–label relationship) differ from training. More old-distribution data won’t fix it.</li><li><b>Label noise</b>: it sets a floor on achievable error, and noisy validation labels blur comparisons between models.</li><li><b>Misleading aggregates</b>: an average hides slice regressions, and on imbalanced data accuracy can look great while the model ignores the rare class.</li></ul>' },
         { t: 'mc', q: 'A churn model uses “days until the account was closed” as a feature and scores 99% on validation. What is the most likely problem?', o: ['Target leakage: the feature is only known after the outcome', 'Overfitting', 'Too little capacity', 'Label noise'], ex: 'The feature wouldn’t exist at prediction time, so the model reads the answer straight from the input.' },
         { t: 'mc', q: 'Overall accuracy rises from 90% to 91%, but accuracy on new users falls from 85% to 78%. What does this show?', o: ['The aggregate hides a regression on an important slice', 'The model improved for everyone', 'Accuracy can’t fall on a slice if it rises overall', 'Label noise'], ex: 'An overall average weights slices by their size. A small slice can get much worse while a large slice improves slightly.' },
-        { t: 'num', q: 'The positive class is 2% of the data. What accuracy does “always predict negative” get?', a: 98, tol: 0, suf: '%', ex: '98%, with zero ability to find positives. On imbalanced data, report precision, recall or PR-AUC alongside accuracy.' },
+        { t: 'num', q: 'The positive class is 2% of the data. What accuracy does “always predict negative” get?', a: 98, tol: 0, suf: '%', ex: '98%, with zero ability to find positives. On imbalanced data, report precision, recall or PR-AUC alongside accuracy.', gen: gen.baseline },
         { t: 'tf', q: 'Stronger regularization is a good fix for high bias.', a: false, ex: 'Regularization restricts the model further, which raises bias. High bias calls for more capacity or better features.' },
         { t: 'explain', kind: 'defend', secs: 90, q: 'Training error is 2%, validation 15%, and validation is still dropping as you add data. You can afford one: double the data, double the model, or add regularization. Choose and defend it.', model: `<p>The pattern points to <b>high variance with room to grow</b>: a large gap that is still closing as data grows. Both data and regularization attack that term.</p><p>I’d first run the cheap experiment: a short regularization sweep (weight decay, dropout, augmentation). It targets the same term at a fraction of the cost. If it closes much of the gap, take it; if not, spend the budget on data, which the still-falling validation curve says will keep paying off.</p><p>Doubling the model is the weakest first bet: it lowers an already-low training error and usually raises variance. (Large, well-regularized models sometimes still win, so it isn’t impossible.)</p><p>Assumptions: validation comes from the deployment distribution and is measured the same way as training.</p>`, rubric: ['Reads the pattern as high variance, citing the gap and the still-improving curve', 'Prefers data or regularization and says why', 'Proposes a cheap experiment before spending the budget', 'Explains why a bigger model is the weakest bet, with a caveat', 'States the assumptions behind the reading'] },
       ],

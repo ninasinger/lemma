@@ -32,6 +32,7 @@ Set `PORT`, `HOST`, `DATA_FILE` or `TRUST_PROXY=1` to change where it listens, w
 | --- | --- |
 | `public/index.html` | The page shell. |
 | `public/js/app.js` | Lesson engine, review sessions, sign-in, syncing. |
+| `public/js/vary.js` | Fresh numbers: questions and cards with a generator draw new values each time they're shown. |
 | `public/js/srs.js` | The spaced-repetition scheduler (pure, shared with tests). |
 | `public/js/widgets.js` | Interactive widgets. |
 | `public/js/content/` | One file per unit: lessons, questions and flashcards. See **[CONTENT.md](CONTENT.md)**. |

@@ -270,4 +270,56 @@ try:
 except ImportError:
     torch_note = "PyTorch not installed, so its 4 shape claims were not run (the arithmetic was)."
 
-print(f"All {checks} NumPy checks passed. {torch_note}")
+# ---------- Derivatives ----------
+def deriv(f, *args, wrt=0):
+    """d f / d args[wrt] by the complex step: exact to rounding for the smooth operations used here."""
+    a = [complex(x) for x in args]
+    a[wrt] += 1e-20j
+    return np.imag(f(*a)) / 1e-20
+
+
+check(np.isclose(deriv(lambda x: x**2, 3), 6), "dv-1 d(x^2)/dx at 3")
+check(np.isclose(3.01**2 - 9, 0.0601) and abs(6 * 0.01 - 0.0601) < 0.002, "dv-1 nudge estimate")
+check(np.isclose(deriv(lambda a, b: a * b, 4, 7, wrt=0), 7) and np.isclose(deriv(lambda b, x: b + x, 5.0, 2.0, wrt=1), 1), "dv-2 product and sum rules")
+check(np.isclose(deriv(lambda x: (2 * x) ** 2, 3), 24), "dv-3 chain a = 2x, y = a^2 at 3")
+check(np.isclose(deriv(lambda x: (3 * x + 1) ** 2, 1), 24), "dv-3 three links")
+check(np.isclose(deriv(lambda x: 3 * (2 * x + 5), 4), 6), "dv-4 indirect path")
+check(np.isclose(deriv(lambda x: 2 * x + x**2, 3), 8), "dv-5 branches add")
+check(np.isclose(deriv(lambda x: (3 * x) * (4 * x), 2), 48), "dv-5 product branches")
+g = 5
+check(np.isclose(g * deriv(lambda a, b: a * b, 2, 3, wrt=0), 15) and np.isclose(g * deriv(lambda a, b: a * b, 2, 3, wrt=1), 10), "dv-6 incoming x local")
+check(np.isclose(3 * deriv(lambda x: x**2, 4), 24) and np.isclose(2.5 * deriv(lambda a: 4 * a, 1.0), 10), "dv-6 drills")
+check(np.isclose(deriv(lambda a: (a - 4) ** 2, 6), 4) and np.isclose(deriv(lambda w: (2 * w - 4) ** 2, 3), 8), "dv-7 squared loss")
+check(np.isclose(deriv(lambda x: x * x, 3), 6) and np.isclose(deriv(lambda a: a * 5 + a, 2), 6), "dv-8 engine traces")
+Wd = np.array([[2, -1, 0], [1, 3, 4]])
+check(np.isclose(deriv(lambda *x: (Wd @ np.array(x))[0], 1.0, 1.0, 1.0, wrt=1), -1), "dv-10 Jacobian of Wx is W")
+Wv, gv = np.array([[1, 2], [3, 4]]), np.array([1, -1])
+check((Wv.T @ gv)[0] == -2 and np.allclose(Wv.T @ gv, [deriv(lambda *x: gv @ (Wv @ np.array(x)), 0.0, 0.0, wrt=j) for j in range(2)]), "dv-10 VJP = W^T g")
+
+# ---------- Generated questions and cards ----------
+# Questions and flashcards with fresh numbers carry a Python twin of each answer. Run a seeded
+# sample of every generator through NumPy and compare with the answer the app would accept.
+import json
+import re
+import subprocess
+from pathlib import Path
+
+root = Path(__file__).resolve().parent.parent
+samples = json.loads(subprocess.run(["node", str(root / "scripts/dump_variants.mjs"), "25"], check=True, capture_output=True, text=True).stdout)
+for v in samples:
+    what = f"{v['where']} (seed {v['seed']}): {v['py']!r}"
+    ctx = {"np": np, "rng": np.random.default_rng(v["seed"]), "deriv": deriv}
+    try:
+        exec(v["py"], ctx)
+        got = ctx["ans"]
+    except ValueError:
+        got = "error"
+    want, tol = v["a"], v["tol"]
+    if isinstance(want, str):
+        expected = "error" if want == "error" else tuple(int(x) for x in re.findall(r"\d+", want))
+        check(got == expected if got == "error" or expected == "error" else tuple(got) == expected, f"{what} gave {got}, the app expects {want}")
+    else:
+        check(np.allclose(got, want, rtol=1e-9, atol=tol + 1e-9), f"{what} gave {got}, the app expects {want}")
+variant_note = f"{len(samples)} generated variants included."
+
+print(f"All {checks} NumPy checks passed. {variant_note} {torch_note}")

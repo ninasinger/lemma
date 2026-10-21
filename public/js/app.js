@@ -2,6 +2,7 @@ import { $, $$, reduced, shuffle, esc, rich, highlight, onDispose, disposeAll, s
 import { W } from './widgets.js';
 import { schedule, preview, formatInterval, dayStart, DAY, MINUTE } from './srs.js';
 import { UNITS } from './content/index.js';
+import { vary } from './vary.js';
 
 const NEW_CARDS_PER_DAY = 20;
 const LEARN_AHEAD = 20 * MINUTE;
@@ -100,6 +101,10 @@ const ALL=[];UNITS.forEach(u=>u.lessons.forEach(l=>ALL.push({u,l})));
 function buildMixedQuiz(){const pool=[];UNITS.forEach(u=>u.lessons.forEach(l=>l.steps.forEach(s=>{if(['mc','tf','num','shape'].includes(s.t))pool.push(s)})));return shuffle(pool).slice(0,10)}
 const views=['login','path','lesson','review','done'];
 function show(id){views.forEach(k=>$('#'+k).hidden=k!==id);$('#top').hidden=id!=='path';window.scrollTo(0,0)}
+// A lesson passes only with every question right the first time. A unit opens once every lesson
+// in the units before it has passed; the mixed review at the end opens once the whole course has.
+const unitPassed=u=>u.lessons.every(l=>st.done[l.id]);
+const unitOpen=ui=>UNITS.slice(0,ui).every(unitPassed);
 const nextUp=()=>ALL.find(x=>!st.done[x.l.id])||(!st.done.review?{u:REVIEW_UNIT,l:REVIEW_UNIT.lessons[0]}:null);
 function renderStats(){
   const s=liveStreak();
@@ -138,14 +143,15 @@ function renderPath(){
   $('#ib-go').onclick=()=>{const t=nx||{u:REVIEW_UNIT,l:REVIEW_UNIT.lessons[0]};startLesson(t.u,t.l)};
   const box=$('#units');box.innerHTML='';let gi=0;
   [...UNITS,REVIEW_UNIT].forEach((u,ui)=>{
-    const sec=document.createElement('section');sec.className='unit';sec.style.cssText=`--uc:var(--${u.c});--ucd:var(--${u.c}-d)`;
-    sec.innerHTML=`<div class="ubanner"><div><p class="eyebrow">${u.review?'Finale':'Unit '+(ui+1)}</p><h2>${u.title}</h2><p>${u.sub}</p></div>${u.guide?`<button type="button" class="gbtn">${ICON.book}<span>Guidebook</span></button>`:''}</div><ol class="nodes"></ol>`;
+    const open=unitOpen(ui),blocker=UNITS.slice(0,ui).find(x=>!unitPassed(x));
+    const sec=document.createElement('section');sec.className='unit'+(open?'':' locked');sec.style.cssText=`--uc:var(--${u.c});--ucd:var(--${u.c}-d)`;
+    sec.innerHTML=`<div class="ubanner"><div><p class="eyebrow">${u.review?'Finale':'Unit '+(ui+1)}${open?'':' · Locked'}</p><h2>${u.title}</h2><p>${u.sub}</p></div>${u.guide?`<button type="button" class="gbtn">${ICON.book}<span>Guidebook</span></button>`:''}</div><ol class="nodes"></ol>`;
     if(u.guide)$('.gbtn',sec).addEventListener('click',()=>openGuide(u));
     const ol=$('.nodes',sec);
     u.lessons.forEach(l=>{const done=!!st.done[l.id],cur=!!nx&&nx.l===l,off=[0,1,0,-1][gi%4]*58;gi++;
-      const li=document.createElement('li');li.className='node'+(done?' done':'')+(cur?' cur':'');li.style.setProperty('--x',off+'px');
-      li.innerHTML=`${cur?'<span class="bubble">Start</span>':''}<button type="button" class="nbtn" aria-label="${esc(l.title)}${done?', completed':''}">${done&&!u.review?ICON.check:(u.review?ICON.trophy:(cur?ICON.play:ICON.star))}</button><span class="nlabel">${l.title}</span>`;
-      $('button',li).addEventListener('click',()=>startLesson(u,l));ol.appendChild(li)});
+      const li=document.createElement('li');li.className='node'+(done?' done':'')+(cur?' cur':'')+(open?'':' locked');li.style.setProperty('--x',off+'px');
+      li.innerHTML=`${cur?'<span class="bubble">Start</span>':''}<button type="button" class="nbtn" aria-label="${esc(l.title)}${done?', passed':open?'':', locked'}">${!open?ICON.lock:done&&!u.review?ICON.check:(u.review?ICON.trophy:(cur?ICON.play:ICON.star))}</button><span class="nlabel">${l.title}</span>`;
+      $('button',li).addEventListener('click',()=>open?startLesson(u,l):toast(`Pass every lesson in ${blocker.title} with 100% to unlock ${u.review?'the mixed review':u.title}.`));ol.appendChild(li)});
     box.appendChild(sec);
   });
 }
@@ -162,7 +168,7 @@ function resetBar(id){const pb=$(id);pb.style.transition='none';pb.style.width='
 function startLesson(u,l){
   disposeAll();closeGuide();
   const steps=l.steps||buildMixedQuiz();
-  LS={u,l,q:steps.slice(),i:0,hearts:5,total:steps.length,done:0,qs:steps.filter(s=>s.t!=='learn').length,wrong:new Set(),phase:'answer',ctrl:null};
+  LS={u,l,q:steps.slice(),i:0,hearts:5,total:steps.length,done:0,qs:steps.filter(s=>s.t!=='learn').length,wrong:new Set(),phase:'answer',ctrl:null,cur:null};
   $('#lesson').style.cssText=`--uc:var(--${u.c});--ucd:var(--${u.c}-d)`;
   resetBar('#pbar');show('lesson');renderStep();
 }
@@ -182,7 +188,7 @@ const RENDER={
   num(w,s){
     w.insertAdjacentHTML('beforeend',`${head(s)}<div class="numrow"><input id="num-in" class="numin" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="Your answer" aria-label="Your answer">${s.suf?`<span class="suf">${s.suf}</span>`:''}</div>`);
     const inp=$('input',w);inp.addEventListener('input',()=>setMain('Check',inp.value.trim()!==''));focusSoon(inp);setMain('Check',false);
-    return{check(){const v=parseFloat(inp.value.replace(/[,%\s]/g,'').replace('−','-'));const ok=Number.isFinite(v)&&Math.abs(v-s.a)<=(s.tol||0)+1e-9;inp.disabled=true;inp.classList.add(ok?'right':'wrong');return{ok,ans:s.a.toLocaleString('en-US')+(s.suf||'')}}};
+    return{check(){const v=parseFloat(inp.value.replace(/[,%\s]/g,'').replace('−','-'));const ok=Number.isFinite(v)&&Math.abs(v-s.a)<=(s.tol||0)+1e-9;inp.disabled=true;inp.classList.add(ok?'right':'wrong');return{ok,ans:s.a.toLocaleString('en-US').replace('-','−')+(s.suf||'')}}};
   },
   shape(w,s){
     w.insertAdjacentHTML('beforeend',`${head(s)}<div class="numrow"><input id="shape-in" class="numin shapein" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="(n, d)" aria-label="Shape, written like (n, d)"></div><p class="hint">Write it like <code>(500, 3)</code> or <code>(3,)</code>. Use <code>()</code> for a single number${s.err?' and <code>error</code> if the line fails':''}.</p>`);
@@ -197,7 +203,7 @@ const RENDER={
       if(LS.phase!=='answer'||b.classList.contains('ok'))return;
       if(!sel||sel.dataset.side===b.dataset.side){const was=sel;if(sel)sel.classList.remove('sel');sel=was===b?null:b;if(sel){sel.classList.add('sel');sfx.tap()}return}
       if(sel.dataset.i===b.dataset.i){[sel,b].forEach(x=>{x.classList.remove('sel');x.classList.add('ok');x.disabled=true});sel=null;left--;if(left)sfx.tap();else setTimeout(()=>reveal(true,s,{}),220)}
-      else{const a=sel;sel=null;[a,b].forEach(x=>{x.classList.remove('sel');x.classList.add('bad')});LS.wrong.add(s);sfx.bad();setTimeout(()=>[a,b].forEach(x=>x.classList.remove('bad')),450)}
+      else{const a=sel;sel=null;[a,b].forEach(x=>{x.classList.remove('sel');x.classList.add('bad')});LS.wrong.add(LS.q[LS.i]);sfx.bad();setTimeout(()=>[a,b].forEach(x=>x.classList.remove('bad')),450)}
     }
     setMain('Check',false);return{};
   },
@@ -225,21 +231,24 @@ const KICK={learn:'New idea',mc:'Pick one',tf:'True or false?',num:'Work it out'
 const kicker=s=>s.t==='explain'?`${KIND[s.kind]} · say it or write it`:KICK[s.t];
 function renderStep(){
   disposeAll();
-  const s=LS.q[LS.i],stg=$('#stage');stg.innerHTML='';LS.phase='answer';LS.ctrl=null;setBar('idle');updateTop();
+  // vary() draws fresh numbers each time, so a missed question comes back as a new instance.
+  const s=LS.cur=vary(LS.q[LS.i]),stg=$('#stage');stg.innerHTML='';LS.phase='answer';LS.ctrl=null;setBar('idle');updateTop();
   const w=document.createElement('div');w.className='step';w.innerHTML=`<p class="kicker">${kicker(s)}</p>`;stg.appendChild(w);
   LS.ctrl=RENDER[s.t](w,s);highlight(w);window.scrollTo(0,0);
 }
 function reveal(ok,s,r){
   LS.phase='reveal';
   if(ok){sfx.ok();LS.done++;setBar('ok',{t:PRAISE[Math.floor(Math.random()*PRAISE.length)],x:s.ex||''})}
-  else{sfx.bad();setBar('bad',{t:'Not quite',x:(r.ans!=null?`<p>Answer: <b>${r.ans}</b></p>`:'')+(s.ex?`<p>${s.ex}</p>`:'')});$('#hearts').classList.remove('hit');void $('#hearts').offsetWidth;$('#hearts').classList.add('hit')}
+  else{sfx.bad();setBar('bad',{t:'Not quite',x:(r.ans!=null?`<p>Answer: <b>${r.ans}</b></p>`:'')+(s.ex?`<p>${s.ex}</p>`:'')+missNote()});$('#hearts').classList.remove('hit');void $('#hearts').offsetWidth;$('#hearts').classList.add('hit')}
   setMain('Continue',true);updateTop();$('#mainbtn').focus({preventScroll:true});
 }
+// Said once, on the first miss of a lesson not yet passed: this run can no longer pass.
+const missNote=()=>LS.wrong.size===1&&!st.done[LS.l.id]?'<p class="miss-note">This run can’t pass now: a lesson needs 100%. Finish it for practice, then go for a clean run. The numbers change every time.</p>':'';
 function onMain(){
-  const b=$('#mainbtn');if(b.disabled||!LS)return;const s=LS.q[LS.i];
+  const b=$('#mainbtn');if(b.disabled||!LS)return;const t=LS.q[LS.i],s=LS.cur;
   if(s.t==='explain'){
     if(LS.phase==='answer'){LS.ctrl.reveal();LS.phase='rubric';setMain('Continue',true);return}
-    const covered=LS.ctrl.score();if(covered<0.6)LS.wrong.add(s);
+    const covered=LS.ctrl.score();if(covered<0.6)LS.wrong.add(t);
     LS.done++;(covered>=0.6?sfx.ok:sfx.tap)();return next();
   }
   if(LS.phase==='answer'){
@@ -247,9 +256,9 @@ function onMain(){
     if(!LS.ctrl.check)return;
     const r=LS.ctrl.check();
     if(r.ok)return reveal(true,s,r);
-    LS.wrong.add(s);
-    if(s.t==='task'){sfx.bad();LS.phase='retry';setBar('retry',{t:'Not yet',x:s.hint});setMain('Try again',true);return}
-    LS.hearts--;LS.q.push(s);reveal(false,s,r);
+    LS.wrong.add(t);
+    if(s.t==='task'){sfx.bad();LS.phase='retry';setBar('retry',{t:'Not yet',x:s.hint+missNote()});setMain('Try again',true);return}
+    LS.hearts--;LS.q.push(t);reveal(false,s,r);
   }else if(LS.phase==='retry'){LS.phase='answer';setBar('idle');setMain('Check',true)}
   else{if(LS.hearts<=0)return fail();next()}
 }
@@ -262,12 +271,25 @@ function doneScreen({title,sub,xp,accLabel,acc,cards}){
   $('#done-alt').hidden=true;$('#done-go').textContent='Continue';$('#done-go').onclick=()=>{LS=null;RS=null;show('path');renderPath()};
   show('done');sfx.win();confetti();$('#done-go').focus({preventScroll:true});
 }
+// Only a perfect run passes. Anything less still earns XP for the practice, but the lesson stays
+// unpassed, its cards stay locked and so does the next unit.
 function finish(){
-  disposeAll();const l=LS.l,perfect=LS.wrong.size===0,xp=(l.id==='review'?20:10)+(perfect?5:0),firstTime=!st.done[l.id];
-  st.done[l.id]=true;st.xp+=xp;bumpStreak();save();
+  disposeAll();const l=LS.l,perfect=LS.wrong.size===0,xp=(l.id==='review'?20:10)+(perfect?5:0),firstTime=perfect&&!st.done[l.id];
+  if(perfect)st.done[l.id]=true;st.xp+=xp;bumpStreak();save();
   const acc=LS.qs?Math.round(100*(LS.qs-LS.wrong.size)/LS.qs):100,n=(l.cards||[]).length;
-  doneScreen({title:perfect?'Flawless lesson!':'Lesson complete!',sub:`${l.title} · ${LS.u.title}`,xp,accLabel:'Accuracy',acc:acc+'%',
+  if(!perfect)return notPassed(acc,xp);
+  doneScreen({title:'Flawless lesson!',sub:`${l.title} · ${LS.u.title}`,xp,accLabel:'Accuracy',acc:acc+'%',
     cards:firstTime&&n?`${ICON.cards}<span><b>${n} flashcards</b> added to your reviews. They come back right before you’d forget them.</span>`:''});
+}
+function notPassed(acc,xp){
+  const u=LS.u,l=LS.l,kept=!!st.done[l.id];
+  $('#done').classList.add('fail');$('#done-mascot').innerHTML=mascot('mascot');
+  $('#done-t').textContent=`${acc}%: not passed yet`;
+  $('#done-sub').textContent=kept?'You passed this lesson before, so it stays passed. A clean run is still the goal.':'A lesson passes at 100%: every question right the first time. Try again; the numbers are new every run.';
+  $('#done-tiles').hidden=false;$('#d-xp').textContent='+'+xp;$('#d-acc-l').textContent='Accuracy';$('#d-acc').textContent=acc+'%';$('#d-st').textContent=st.streak+(st.streak===1?' day':' days');
+  $('#done-cards').hidden=true;$('#done-alt').hidden=false;$('#done-alt').onclick=()=>{LS=null;show('path');renderPath()};
+  $('#done-go').textContent='Try again';$('#done-go').onclick=()=>startLesson(u,l);
+  show('done');sfx.bad();$('#done-go').focus({preventScroll:true});
 }
 function fail(){
   disposeAll();const u=LS.u,l=LS.l;
@@ -311,7 +333,7 @@ function renderRvCounts(){
 }
 function renderCard(){
   disposeAll();
-  const card=RS.queue[0];RS.shown=false;
+  const card=vary(RS.queue[0]);RS.shown=false;
   $('#review').style.cssText=`--uc:var(--${card.u.c});--ucd:var(--${card.u.c}-d)`;
   $('#rv-kicker').textContent=card.kind?`${KIND[card.kind]} · ${card.u.title}`:`${card.u.title} · ${card.l.title}`;
   $('#rv-front').innerHTML=rich(card.front);$('#rv-back').innerHTML=rich(card.back);

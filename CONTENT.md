@@ -7,7 +7,7 @@ export default {
   id: 'mx',                 // permanent
   title: 'Matrices',
   sub: 'One-line promise shown on the unit banner.',
-  c: 'mx',                  // color token: mx, pca, svd, l2, wd, dr or gold (add new ones in app.css)
+  c: 'mx',                  // color token: mx, dv, pca, svd, gen, l2, wd, dr or gold (add new ones in app.css)
   guide: `…HTML…`,          // the Guidebook cheat sheet
   lessons: [
     { id: 'mx-1', title: 'Dot products', steps: [ … ], cards: [ … ] },
@@ -31,6 +31,30 @@ export default {
 | `explain` | `kind`, `q`, `model`, `rubric`, optional `secs` | Open-ended interview practice. The learner answers (typed or out loud) with a timer, then sees the model answer and ticks the rubric points they covered. Under 60% coverage counts as a miss for accuracy; no hearts are lost. |
 
 Any step can also carry `code`, which is shown as a highlighted Python block under the question.
+
+## Passing a lesson
+
+A lesson passes only at 100%: every question right the first time. A miss still comes back at the end of the run, but the lesson stays unpassed, its cards stay locked, and the next unit stays locked until every lesson before it has passed. A lesson passed once stays passed.
+
+## Fresh numbers
+
+Every `num` and `shape` step, and any card built around a computation, carries `gen(v)`: a function that returns the fields that change, built from random numbers. The app calls it each time the item is shown (a retry, a missed question coming back, a flashcard review), so the same numbers never come twice. `npm test` fails if a `num` or `shape` step has no `gen`.
+
+```js
+const gen = {
+  dot(v) {
+    const a = v.vec(3), b = v.vec(3), s = dot(a, b);
+    return { q: `a = ${list(a)} and b = ${list(b)}. What is a·b?`, a: s, ex: `${dotTerms(a, b)} = ${num(s)}.`,
+      py: `ans = np.array(${py(a)}) @ np.array(${py(b)})` };
+  },
+};
+{ t: 'num', q: 'a = [2, −1, 3] and b = [4, 0, 1]. What is a·b?', a: 11, tol: 0, ex: '…', gen: gen.dot }
+```
+
+- `v` has `int`, `nz`, `pick`, `sign`, `vec`, `mat` and `sizes(k)` (k different realistic sizes, so a shape mix-up can't hide behind two equal lengths). Format with `num`, `list`, `mtx`, `shape`, `big` and `dotTerms` from `public/js/vary.js`.
+- Return `py`: Python that recomputes the answer from the same numbers and sets `ans` (a number, a list, or a shape tuple; a `ValueError` means `error`). `npm run verify:py` runs 25 seeded samples of every generator through NumPy. Write it a different way from the JavaScript where you can, e.g. run the actual NumPy line for a shape.
+- A card's `gen` returns `front` and `back` (plus `a` and `py` when there is one checkable answer). Keep the idea of the card and change the worked example.
+- Keep the written `q`, `a` and `ex` as the canonical example; `scripts/verify_numpy.py` checks those too.
 
 ## Four kinds of practice
 

@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { UNITS } from '../public/js/content/index.js';
 import { W, OPTIMIZERS, simulateOptimizer } from '../public/js/widgets.js';
-import { parseShape, rich } from '../public/js/util.js';
+import { parseShape, rich, rng } from '../public/js/util.js';
+import { vary } from '../public/js/vary.js';
 
 const lessons = UNITS.flatMap((u) => u.lessons);
 const cards = lessons.flatMap((l) => l.cards ?? []);
@@ -22,9 +23,13 @@ test('every unit has a color token and a guidebook', () => {
   }
 });
 
+// Each item as written, plus seeded samples of the ones that draw fresh numbers.
+const SEEDS = Array.from({ length: 40 }, (_, i) => i + 1);
+const instances = (item) => (item.gen ? SEEDS.map((seed) => vary(item, rng(seed))) : [item]);
+
 test('every step is well formed', () => {
   for (const l of lessons) {
-    for (const s of l.steps) {
+    for (const s of l.steps.flatMap(instances)) {
       const where = `${l.id}: ${s.q ?? s.title}`;
       assert.ok(STEP_TYPES.has(s.t), `unknown type in ${where}`);
       if (s.w) assert.equal(typeof W[s.w], 'function', `unknown widget "${s.w}" in ${where}`);
@@ -47,7 +52,7 @@ test('every step is well formed', () => {
 
 test('every lesson unlocks at least three review cards', () => {
   for (const l of lessons) assert.ok((l.cards ?? []).length >= 3, l.id);
-  for (const c of cards) {
+  for (const c of cards.flatMap(instances)) {
     assert.ok(c.front && c.back, c.id);
     if (c.rubric) assert.ok(KINDS.has(c.kind) && c.rubric.length >= 3, `${c.id}: rubric cards need a kind and 3+ points`);
   }
@@ -79,4 +84,29 @@ test('the optimizer widget reproduces the numbers taught in the weight-decay les
 test('the new course has derive, diagnose and defend practice', () => {
   const kinds = new Set([...lessons.flatMap((l) => l.steps), ...cards].filter((x) => x.kind).map((x) => x.kind));
   for (const k of ['derive', 'diagnose', 'defend']) assert.ok(kinds.has(k), k);
+});
+
+test('questions and cards with a generator draw different numbers each time', () => {
+  const items = [...lessons.flatMap((l) => l.steps), ...cards].filter((x) => x.gen);
+  assert.ok(items.length >= 100, `only ${items.length} items vary`);
+  for (const item of items) {
+    const shown = SEEDS.map((seed) => vary(item, rng(seed)));
+    const texts = shown.map((x) => [x.q, x.code, x.front].join('|'));
+    assert.ok(new Set(texts).size >= 3, `${item.id ?? item.q}: only ${new Set(texts).size} different versions in ${SEEDS.length} draws`);
+    for (const x of shown) {
+      const text = [x.q, x.code, x.ex, x.front, x.back].filter(Boolean).join(' ');
+      assert.doesNotMatch(text, /undefined|NaN|Infinity|\[object/, `${item.id ?? item.q}: ${text}`);
+      assert.equal(x.t, item.t, 'a generator never changes the step type');
+      assert.ok(x.py === undefined || /\bans\s*=/.test(x.py), `${item.id ?? item.q}: py must set ans`);
+    }
+  }
+});
+
+test('every numeric and shape question draws fresh numbers', () => {
+  for (const l of lessons) for (const s of l.steps) if (s.t === 'num' || s.t === 'shape') assert.ok(s.gen, `${l.id}: ${s.q}`);
+});
+
+test('an item without a generator is shown as written', () => {
+  const card = cards.find((c) => !c.gen);
+  assert.equal(vary(card), card);
 });
