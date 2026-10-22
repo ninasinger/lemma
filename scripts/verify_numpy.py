@@ -296,6 +296,16 @@ check(np.isclose(deriv(lambda *x: (Wd @ np.array(x))[0], 1.0, 1.0, 1.0, wrt=1), 
 Wv, gv = np.array([[1, 2], [3, 4]]), np.array([1, -1])
 check((Wv.T @ gv)[0] == -2 and np.allclose(Wv.T @ gv, [deriv(lambda *x: gv @ (Wv @ np.array(x)), 0.0, 0.0, wrt=j) for j in range(2)]), "dv-10 VJP = W^T g")
 
+# ---------- Chain rule review ----------
+check(np.isclose(deriv(lambda x: 4 * (2 * x) ** 2 + 3 * x, 2), 67), "ad-1 worked example: 64 + 3")
+check(np.isclose(deriv(lambda x: 4 * (2 * x) ** 2 + 3 * 2, 2), 64) and np.isclose(deriv(lambda a: a**2, 4), 8), "ad-1 indirect path and the 2a edge")
+check(np.isclose(deriv(lambda x: 2 * (3 * x) ** 2 + 5 * x, 1), 41) and np.isclose(2 * 67, 134), "ad-4 drills")
+check(np.isclose(deriv(lambda x: (3 * (x + 1)) ** 2 + 2 * x, 1), 38), "ad-4 shifted graph")
+check(np.isclose(deriv(lambda x: 3 * (2 * x) ** 2 + 4 * x, -1), -20), "ad-4 negative x")
+check(np.isclose(-1 * deriv(lambda x: 2 * (2 * x) ** 2 - x, 3), -47), "ad-4 incoming -1")
+check(np.isclose(deriv(lambda x: (2 * x + 1) ** 2, 1), 12) and np.isclose(2 * deriv(lambda x: 2 * x + x**2, 3), 16), "ad-3 chain and branch drills")
+check(np.isclose(4 * deriv(lambda a, b: a * b, -3, 2, wrt=1), -12) and np.isclose(3 * deriv(lambda x: x**2, -2), -12), "ad-2 drills")
+
 # ---------- Generated questions and cards ----------
 # Questions and flashcards with fresh numbers carry a Python twin of each answer. Run a seeded
 # sample of every generator through NumPy and compare with the answer the app would accept.
