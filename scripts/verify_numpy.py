@@ -319,6 +319,13 @@ check(32000 / 32 == 1000 and len(range(0, 32000, 1024)) == 32 and np.isclose(320
 check(abs(rng.normal(0, 2, size=(40000, 16)).mean(axis=1).std() - 0.5) < 0.02, "opt-4 batch noise shrinks like sigma/sqrt(B)")
 check((0**2 - 1**2) == -1 and np.isclose(deriv(lambda x, y: x**2 - y**2, 1, 2, wrt=1), -4) and np.allclose([deriv(lambda x, y: x**2 - y**2, 0.0, 0.0, wrt=i) for i in (0, 1)], 0), "opt-5 saddle")
 
+# ---------- ML CI/CD ----------
+half = 1.96 * 100 * np.sqrt(0.9 * 0.1 / 200)
+check(abs(half - 4.16) < 0.3 and abs(1.96 * 100 * (rng.binomial(200, 0.9, 400000) / 200).std() - half) < 0.05, "ops-4 interval on 200 examples at 90%")
+check(2 < half / 1.5 and 8 > 1.5 * half, "ops-4 a 2-point drop is noise-sized, an 8-point drop is not")
+need = next(n for n in range(1, 10000) if 1.96 * np.sqrt(0.9 * 0.1 / n) <= 0.02)
+check(need == 865, "ops-4 examples for a +/-2-point interval")
+
 # ---------- Generated questions and cards ----------
 # Questions and flashcards with fresh numbers carry a Python twin of each answer. Run a seeded
 # sample of every generator through NumPy and compare with the answer the app would accept.
