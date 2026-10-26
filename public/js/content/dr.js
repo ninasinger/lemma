@@ -43,51 +43,6 @@ const gen = {
       ex: `h²(1 − k)/k = ${h * h} × ${num(1 - k)} / ${num(k)} = ${num(a, 3)}.`, py: `${outcomes(h, k)}\nans = var` };
   },
 
-  cScale(v) {
-    const p = v.pick(DROP), a = 1 / (1 - p);
-    return { front: `In inverted dropout with p = ${num(p)}, what are the survivors multiplied by?`,
-      back: `1 / (1 − p) = 1 / ${num(1 - p)} = <b>${num(a, 3)}</b>, so the expected activation matches test time.`, a, py: `ans = 1 / (1 - ${p})` };
-  },
-  cP(v) {
-    const p = v.pick([0.1, 0.2, 0.3, 0.5]);
-    return { front: `In PyTorch’s <code>nn.Dropout(p=${num(p)})</code>, what is p?`,
-      back: `The drop probability: about <b>${num(100 * p)}%</b> of activations are zeroed. The original 2014 paper used p for the keep probability.`, a: 100 * p, tol: 0.5,
-      py: `ans = 100 * (rng.random(1_000_000) < ${p}).mean()` };
-  },
-  cEnsemble(v) {
-    const n = v.int(4, 20), a = 2 ** n;
-    return { front: `Why does dropout help? (the ensemble view) How many thinned networks can a layer of ${n} droppable units make?`,
-      back: `Each mask is a thinned network: 2${sup(n)} = <b>${big(a)}</b> here. Training averages over these weight-sharing sub-networks, and the full network at test time approximates their average.`, a,
-      py: `ans = 2 ** ${n}` };
-  },
-  cMask(v) {
-    const b = v.pick([16, 32, 64]), h = v.pick([128, 256, 512]), k = v.pick(KEEP);
-    return { front: `How do you build a dropout mask for activations h of shape (${b}, ${h}) with keep probability ${num(k)}?`,
-      back: `<code>mask = rng.random(h.shape) &lt; ${num(k)}</code>: shape <b>(${b}, ${h})</b>, one coin per entry.`, a: shape(b, h),
-      py: `ans = (rng.random((${b}, ${h})) < ${k}).shape` };
-  },
-  cApply(v) {
-    const b = v.pick([16, 32, 64]), h = v.pick([128, 256, 512]), k = v.pick(KEEP);
-    return { front: `Apply inverted dropout to h of shape (${b}, ${h}) with keep = ${num(k)}. What comes out?`,
-      back: `<code>h * mask / keep</code>: elementwise, so the shape stays <b>(${b}, ${h})</b>.`, a: shape(b, h),
-      py: `h = np.zeros((${b}, ${h}))\nans = (h * (rng.random(h.shape) < ${k}) / ${k}).shape` };
-  },
-  cExpect(v) {
-    const h = v.pick([1, 2, 3, 0.5]), k = v.pick(KEEP);
-    return { front: `Why does inverted dropout divide by keep? Check E[h·mask/keep] for h = ${num(h)} and keep = ${num(k)}.`,
-      back: `E[h·mask/keep] = h·keep/keep = <b>${num(h)}</b> = h, so training and test activations match on average.`, a: h, py: `${outcomes(h, k)}\nans = mean` };
-  },
-  cVar(v) {
-    const h = v.pick([1, 2, 3]), k = v.pick(KEEP), a = (h * h * (1 - k)) / k;
-    return { front: `Variance of a dropped unit h·m/k with h = ${h} and keep probability k = ${num(k)}?`,
-      back: `h²(1 − k)/k = ${h * h} × ${num(1 - k)} / ${num(k)} = <b>${num(a, 3)}</b>. The mean stays h.`, a, py: `${outcomes(h, k)}\nans = var` };
-  },
-  cShape(v) {
-    const d = v.pick([[32, 256], [64, 128], [8, 3, 32, 32], [16, 50, 512]]);
-    return { front: `Does dropout change an activation’s shape? Take h of shape ${shape(...d)}.`,
-      back: `No: ${shape(...d)} in, <b>${shape(...d)}</b> out. It’s elementwise, so the mask and the output have the same shape as the input.`, a: shape(...d),
-      py: `h = np.zeros(${py(d).replace('[', '(').replace(']', ')')})\nans = (h * (rng.random(h.shape) < 0.8) / 0.8).shape` };
-  },
 };
 
 export default {id:'dr',title:'Dropout',sub:'Randomly switch off neurons while training.',c:'dr',
@@ -105,9 +60,9 @@ h * mask / keep                     # elementwise, shape unchanged</pre>`,
  ],
  cards:[
   { id: 'dr-def', front: `What does dropout do during training?`, back: `Zeroes each unit’s output with probability p, drawing a fresh random mask every step.` },
-  { id: 'dr-scale', front: `In inverted dropout, what are the survivors multiplied by?`, back: `1 / (1 − p), so the expected activation matches test time.`, gen: gen.cScale },
+  { id: 'dr-scale', front: `In inverted dropout, what are the survivors multiplied by?`, back: `1 / (1 − p), so the expected activation matches test time.` },
   { id: 'dr-test', front: `What does dropout do at test time?`, back: `Nothing: no units are dropped and nothing is scaled. Call <code>model.eval()</code>.` },
-  { id: 'dr-p', front: `In PyTorch’s <code>nn.Dropout(p=0.3)</code>, what is p?`, back: `The drop probability: about 30% of activations are zeroed. The original 2014 paper used p for the keep probability.`, gen: gen.cP },
+  { id: 'dr-p', front: `In PyTorch’s <code>nn.Dropout(p=0.3)</code>, what is p?`, back: `The drop probability: about 30% of activations are zeroed. The original 2014 paper used p for the keep probability.` },
  ]},
  {id:'dr-2',title:'Why it works',steps:[
   {t:'learn',title:'Two ways to see it',body:`<p><b>No freeloaders.</b> A neuron can’t count on any particular partner being present, so each feature has to be useful on its own. This breaks up fragile co-adaptations.</p><p><b>A huge ensemble.</b> Each mask defines a different thinned network, and they all share weights. With n droppable neurons there are <span class="m">2ⁿ</span> of them. At test time the full network is a cheap approximation to averaging them: exact for a single linear layer, only approximate once nonlinearities are involved.</p>`},
@@ -119,7 +74,7 @@ h * mask / keep                     # elementwise, shape unchanged</pre>`,
  ],
  cards:[
   { id: 'dr-coadapt', front: `Why does dropout help? (the co-adaptation view)`, back: `No unit can rely on a specific partner being present, so each feature has to be useful on its own.` },
-  { id: 'dr-ensemble', front: `Why does dropout help? (the ensemble view)`, back: `Each mask is a thinned network. Training averages over 2ⁿ weight-sharing sub-networks, and the full network at test time approximates their average.`, gen: gen.cEnsemble },
+  { id: 'dr-ensemble', front: `Why does dropout help? (the ensemble view)`, back: `Each mask is a thinned network. Training averages over 2ⁿ weight-sharing sub-networks, and the full network at test time approximates their average.` },
   { id: 'dr-eval', front: `What goes wrong if you forget <code>model.eval()</code> at inference?`, back: `Dropout stays on: predictions are random and usually worse.` },
   { id: 'dr-rate', front: `How do you choose a dropout rate?`, back: `From validation evidence: more dropout when the model overfits (a large, growing gap), less or none when it underfits or the dataset is large relative to the model.` },
  ]},
@@ -144,14 +99,14 @@ h_test = h                           # test time: no mask, no scaling</pre><p>Th
   {t:'explain',kind:'derive',secs:90,q:'Derive the mean and variance of h·m/k for m ~ Bernoulli(k), then explain why matching the mean doesn’t make the whole network’s expected output match test time.',model:`<p>E[m] = k and Var[m] = k(1 − k). So E[h·m/k] = h, and Var[h·m/k] = h²·k(1 − k)/k² = h²(1 − k)/k.</p><p>That fixes each unit’s <em>mean</em>. But the next layer applies a nonlinearity f, and in general E[f(z)] ≠ f(E[z]) (Jensen’s inequality for convex or concave f). So the test-time network, which feeds f the means, is only an approximation to averaging the network’s output over masks. It is exact only where the computation is linear.</p>`,rubric:['E[m] = k and Var[m] = k(1 − k)','Mean of h·m/k is h','Variance is h²(1 − k)/k','Explains E[f(z)] ≠ f(E[z]) for nonlinear f','Concludes test-time scaling is an approximation to averaging']}
  ],
  cards:[
-  { id: 'dr-np-mask', front: `How do you build a dropout mask for activations h with keep probability k?`, back: `<code>mask = rng.random(h.shape) &lt; k</code>: same shape as h, one coin per entry.`, gen: gen.cMask },
-  { id: 'dr-np-apply', front: `Apply inverted dropout to h in NumPy.`, back: `<code>h * mask / keep</code>: elementwise, and the shape doesn’t change.`, gen: gen.cApply },
-  { id: 'dr-np-expect', front: `Why does inverted dropout divide by keep?`, back: `E[h·mask/keep] = h, so training and test activations match on average.`, gen: gen.cExpect },
-  { id: 'dr-np-var', front: `Variance of a dropped unit h·m/k, with keep probability k?`, back: `h²(1 − k)/k. The mean stays h.`, gen: gen.cVar },
+  { id: 'dr-np-mask', front: `How do you build a dropout mask for activations h with keep probability k?`, back: `<code>mask = rng.random(h.shape) &lt; k</code>: same shape as h, one coin per entry.` },
+  { id: 'dr-np-apply', front: `Apply inverted dropout to h in NumPy.`, back: `<code>h * mask / keep</code>: elementwise, and the shape doesn’t change.` },
+  { id: 'dr-np-expect', front: `Why does inverted dropout divide by keep?`, back: `E[h·mask/keep] = h, so training and test activations match on average.` },
+  { id: 'dr-np-var', front: `Variance of a dropped unit h·m/k, with keep probability k?`, back: `h²(1 − k)/k. The mean stays h.` },
   { id: 'dr-np-nonlin', front: `Why isn’t test-time dropout scaling an exact average over masks?`, back: `For a nonlinear f, E[f(z)] ≠ f(E[z]). Matching each unit’s mean doesn’t match the network’s mean output.` },
   { id: 'dr-np-evalnograd', front: `What do <code>model.eval()</code> and <code>torch.no_grad()</code> each do?`, back: `eval(): changes layer behavior (dropout off, batch norm running stats). no_grad(): stops gradient tracking. They’re independent.` },
   { id: 'dr-mc', front: `What is Monte Carlo dropout?`, back: `Keeping dropout on at inference on purpose, running several passes, and using their spread as an uncertainty estimate.` },
-  { id: 'dr-derive-meanvar', kind: 'derive', secs: 90, front: `Derive the mean and variance of h·m/k (m ~ Bernoulli(k)), and say why test-time scaling isn’t exact averaging.`, back: `E = h; Var = h²(1 − k)/k. For nonlinear f, E[f(z)] ≠ f(E[z]), so the scaled network approximates the average over masks.`, rubric: ['Mean is h', 'Variance is h²(1 − k)/k', 'Nonlinearity breaks exact averaging'] },
-  { id: 'dr-np-shape', front: `Does dropout change an activation’s shape?`, back: `No. It’s elementwise: the mask and the output have the same shape as the input.`, gen: gen.cShape },
+  { id: 'dr-derive-meanvar', front: 'What does inverted dropout do to a unit’s mean and its variance?', back: 'The mean stays the same (that’s what dividing by keep is for); the variance goes up.' },
+  { id: 'dr-np-shape', front: `Does dropout change an activation’s shape?`, back: `No. It’s elementwise: the mask and the output have the same shape as the input.` },
  ]}
 ]};

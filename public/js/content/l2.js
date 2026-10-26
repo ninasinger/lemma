@@ -1,4 +1,4 @@
-import { num, list, big, shape, py } from '../vary.js';
+import { num, big, shape, py } from '../vary.js';
 
 // Fresh numbers every time a question or card is shown (see ../vary.js).
 const LAMS = [0.01, 0.05, 0.1, 0.5, 1, 2];
@@ -45,45 +45,6 @@ const gen = {
       py: `g = np.random.default_rng(1)\nX, y = g.normal(size=(${n}, 3)), g.normal(size=${n})\nwB = np.linalg.solve(X.T @ X / ${n} + ${lb} * np.eye(3), X.T @ y / ${n})\nwA = np.linalg.solve(X.T @ X + ${a} * np.eye(3), X.T @ y)\nassert np.allclose(wA, wB)\nans = ${a}` };
   },
 
-  cLoss(v) {
-    const w = [v.nz(-4, 4), v.nz(-4, 4), v.nz(-4, 4)], lam = v.pick(LAMS), a = +(lam * sq(w)).toFixed(6);
-    return { front: `Write the loss with L2 regularization. What penalty does w = ${list(w)} pay with λ = ${num(lam)}?`,
-      back: `data loss + λ‖w‖², where ‖w‖² = Σⱼ wⱼ². Here ${num(lam)} × ${sq(w)} = <b>${num(a)}</b>.`, a, py: `w = np.array(${py(w)})\nans = ${lam} * (w @ w)` };
-  },
-  cGrad(v) {
-    const w = [v.nz(-4, 4), v.nz(-4, 4)], lam = v.pick([0.1, 0.5, 1, 2]), g = w.map((x) => +(2 * lam * x).toFixed(6));
-    return { front: `What is the gradient of λ‖w‖²? Evaluate it at w = ${list(w)} with λ = ${num(lam)}.`,
-      back: `2λw = 2 × ${num(lam)} × ${list(w)} = <b>${list(g)}</b>. Written as (λ/2)‖w‖², it’s just λw.`, a: g,
-      py: `w, h = np.array(${py(w)}, dtype=float), 1e-6\nf = lambda u: ${lam} * (u @ u)\nans = [(f(w + h * e) - f(w - h * e)) / (2 * h) for e in np.eye(2)]` };
-  },
-  cShrink(v) {
-    const s = v.pick([1, 2, 3, 5, 10]), lam = v.pick([1, 4, 9, 25, 100]), f = (s * s) / (s * s + lam);
-    return { front: `How much does ridge shrink the component along a singular direction with σ = ${s} when λ = ${lam}?`,
-      back: `By the factor σᵢ² / (σᵢ² + λ) = ${s * s} / (${s * s} + ${lam}) = <b>${num(f, 3)}</b>. Well-determined (large-σ) directions barely change; poorly determined ones get crushed. Large σ means X varies there, not that it predicts y.`, a: f,
-      py: `ans = ${s}**2 / (${s}**2 + ${lam})` };
-  },
-  cShapes(v) {
-    const [n, d] = v.sizes(2, [50, 100, 200, 500, 1000, 3, 5, 10, 20]);
-    return { front: `Shapes in linear regression with ${n} samples and ${d} features: X, y, w and <code>X @ w</code>?`,
-      back: `X (${n}, ${d}), y (${n},), w (${d},), <code>X @ w</code> <b>(${n},)</b>.`, a: shape(n), py: `ans = (np.zeros((${n}, ${d})) @ np.zeros(${d})).shape` };
-  },
-  cNpGrad(v) {
-    const [n, d] = v.sizes(2, [50, 100, 200, 500, 3, 5, 10, 20]);
-    return { front: `Gradient of ‖Xw − y‖² + λ‖w‖² in NumPy, and its shape for X of shape (${n}, ${d})?`,
-      back: `<code>2 * X.T @ (X @ w - y) + 2 * lam * w</code>, shape <b>(${d},)</b>, same as w.`, a: shape(d),
-      py: `X, y, w, lam = np.zeros((${n}, ${d})), np.zeros(${n}), np.zeros(${d}), 0.1\nans = (2 * X.T @ (X @ w - y) + 2 * lam * w).shape` };
-  },
-  cXt(v) {
-    const [n, d] = v.sizes(2, [50, 100, 200, 500, 3, 5, 10, 20]);
-    return { front: `Why does <code>X.T</code> appear in the gradient? Follow the shapes for X of shape (${n}, ${d}).`,
-      back: `It maps ${n} residuals back to ${d} weights: (${d}, ${n}) @ (${n},) → <b>(${d},)</b>. Entry j sums residual × feature j over all samples.`, a: shape(d),
-      py: `ans = (np.zeros((${n}, ${d})).T @ np.zeros(${n})).shape` };
-  },
-  cMean(v) {
-    const n = v.pick([100, 500, 1000, 5000]), lb = v.pick([0.001, 0.01, 0.05, 0.1]), a = +(n * lb).toFixed(6);
-    return { front: `Loss Σr² + λ_A‖w‖² vs (1/n)Σr² + λ_B‖w‖² with n = ${big(n)} and λ_B = ${num(lb)}: what λ_A gives the same solution?`,
-      back: `λ_A = n·λ_B = <b>${num(a)}</b>. Whether the data term is summed or averaged changes what a given λ means.`, a, py: `ans = ${n} * ${lb}` };
-  },
 };
 
 export default {id:'l2',title:'L2 regularization',sub:'Charge the model for every large weight.',c:'l2',
@@ -102,7 +63,7 @@ w = np.linalg.solve(X.T @ X + lam * np.eye(d), X.T @ y)</pre>`,
   {t:'num',q:`Weights w = (3, −4) and λ = 0.1. What is the penalty λ‖w‖²?`,a:2.5,tol:.001,ex:`‖w‖² = 9 + 16 = 25, and 0.1 × 25 = 2.5.`,gen:gen.penalty}
  ],
  cards:[
-  { id: 'l2-loss', front: `Write the loss with L2 regularization.`, back: `data loss + λ‖w‖², where ‖w‖² = Σⱼ wⱼ².`, gen: gen.cLoss },
+  { id: 'l2-loss', front: `Write the loss with L2 regularization.`, back: `data loss + λ‖w‖², where ‖w‖² = Σⱼ wⱼ².` },
   { id: 'l2-lambda', front: `What happens when λ is too small, and too large?`, back: `Too small: overfits, wiggling through the noise. Too large: underfits, with weights shrunk toward 0 and a model that’s too flat.` },
   { id: 'l2-vs-l1', front: `Does L2 regularization make weights exactly zero?`, back: `Rarely. It shrinks them smoothly. L1 (the lasso) is what produces exact zeros.` },
   { id: 'l2-select', front: `How do you choose λ in practice?`, back: `On held-out validation data or by cross-validation. Touch the test set once, at the very end. (The widget’s “true error” is an oracle you never have.)` },
@@ -117,9 +78,9 @@ w = np.linalg.solve(X.T @ X + lam * np.eye(d), X.T @ y)</pre>`,
   {t:'tf',q:`The bias (intercept) is usually left out of the L2 penalty.`,a:true,ex:`Shifting every prediction up or down doesn’t make the function any wigglier, so penalizing it only adds bias. The polynomial demo left the constant term unpenalized.`}
  ],
  cards:[
-  { id: 'l2-grad', front: `What is the gradient of λ‖w‖²?`, back: `2λw. Written as (λ/2)‖w‖², it’s just λw.`, gen: gen.cGrad },
+  { id: 'l2-grad', front: `What is the gradient of λ‖w‖²?`, back: `2λw. Written as (λ/2)‖w‖², it’s just λw.` },
   { id: 'l2-closed', front: `Ridge regression in closed form?`, back: `w = (XᵀX + λI)⁻¹ Xᵀy.` },
-  { id: 'l2-shrink', front: `How much does ridge shrink the component along singular direction i?`, back: `By the factor σᵢ² / (σᵢ² + λ). Well-determined (large-σ) directions barely change; poorly determined ones get crushed. Large σ means X varies there, not that it predicts y.`, gen: gen.cShrink },
+  { id: 'l2-shrink', front: `How much does ridge shrink the component along singular direction i?`, back: `By the factor σᵢ² / (σᵢ² + λ). Well-determined (large-σ) directions barely change; poorly determined ones get crushed. Large σ means X varies there, not that it predicts y.` },
   { id: 'l2-geo', front: `Which directions does ridge shrink the most?`, back: `Where the loss is flat (small singular values): the data gives little evidence there, so the penalty wins.` },
  ]},
  {id:'l2-3',title:'Ridge in NumPy',steps:[
@@ -151,14 +112,14 @@ w = np.linalg.lstsq(A, b, rcond=None)[0]       # same ridge solution, no X.T @ X
   {t:'explain',kind:'derive',secs:90,q:'Derive the ridge solution from the objective ‖Xw − y‖² + λ‖w‖².',model:`<p>Take the gradient with respect to w and set it to zero:</p><div class="eq">2Xᵀ(Xw − y) + 2λw = 0  ⇒  (XᵀX + λI) w = Xᵀy</div><p>For λ &gt; 0, XᵀX + λI is positive definite (every eigenvalue is at least λ), so the objective is strictly convex and this w is its unique minimizer:</p><div class="eq">w = (XᵀX + λI)⁻¹ Xᵀy</div><p>In code, solve the system rather than forming the inverse. The same objective also comes from a Gaussian prior on w (MAP estimation), which the likelihood unit will cover.</p>`,rubric:['Differentiates both terms correctly: 2Xᵀ(Xw − y) and 2λw','Sets the gradient to zero and rearranges to (XᵀX + λI)w = Xᵀy','Argues uniqueness: XᵀX + λI is positive definite for λ &gt; 0','Notes to solve the system rather than invert']}
  ],
  cards:[
-  { id: 'l2-np-shapes', front: `Shapes in linear regression: X, y, w and <code>X @ w</code>?`, back: `X (n, d), y (n,), w (d,), <code>X @ w</code> (n,).`, gen: gen.cShapes },
-  { id: 'l2-np-grad', front: `Gradient of ‖Xw − y‖² + λ‖w‖² in NumPy, and its shape?`, back: `<code>2 * X.T @ (X @ w - y) + 2 * lam * w</code>, shape (d,), same as w.`, gen: gen.cNpGrad },
+  { id: 'l2-np-shapes', front: `Shapes in linear regression: X, y, w and <code>X @ w</code>?`, back: `X (n, d), y (n,), w (d,), <code>X @ w</code> (n,).` },
+  { id: 'l2-np-grad', front: `Gradient of ‖Xw − y‖² + λ‖w‖² in NumPy, and its shape?`, back: `<code>2 * X.T @ (X @ w - y) + 2 * lam * w</code>, shape (d,), same as w.` },
   { id: 'l2-np-solve', front: `The ridge solution in one NumPy call?`, back: `<code>np.linalg.solve(X.T @ X + lam * np.eye(d), X.T @ y)</code>` },
-  { id: 'l2-np-xt', front: `Why does <code>X.T</code> appear in the gradient?`, back: `It maps n residuals back to d weights: (d, n) @ (n,) → (d,). Entry j sums residual × feature j over all samples.`, gen: gen.cXt },
+  { id: 'l2-np-xt', front: `Why does <code>X.T</code> appear in the gradient?`, back: `It maps n residuals back to d weights: (d, n) @ (n,) → (d,). Entry j sums residual × feature j over all samples.` },
   { id: 'l2-np-units', front: `Why standardize features before ridge?`, back: `The penalty acts on coefficients, whose size depends on each feature’s units. Without standardizing, one λ penalizes features unevenly.` },
-  { id: 'l2-np-mean', front: `Loss Σr² + λ_A‖w‖² vs (1/n)Σr² + λ_B‖w‖²: how do the λs relate?`, back: `λ_A = n·λ_B. Whether the data term is summed or averaged changes what a given λ means.`, gen: gen.cMean },
+  { id: 'l2-np-mean', front: `Loss Σr² + λ_A‖w‖² vs (1/n)Σr² + λ_B‖w‖²: how do the λs relate?`, back: `λ_A = n·λ_B. Whether the data term is summed or averaged changes what a given λ means.` },
   { id: 'l2-np-aug', front: `How do you solve ridge without forming XᵀX?`, back: `Least squares on the augmented system [X; √λ·I] w ≈ [y; 0], e.g. with <code>np.linalg.lstsq</code>.` },
-  { id: 'l2-derive-closed', kind: 'derive', secs: 90, front: `Derive the ridge solution from ‖Xw − y‖² + λ‖w‖².`, back: `Gradient 2Xᵀ(Xw − y) + 2λw = 0 gives (XᵀX + λI)w = Xᵀy. XᵀX + λI is positive definite for λ &gt; 0, so the minimizer is unique.`, rubric: ['Correct gradient of both terms', 'Rearranges to (XᵀX + λI)w = Xᵀy', 'Uniqueness from positive definiteness', 'Solve rather than invert'] },
+  { id: 'l2-derive-closed', front: 'Why does ridge always have a unique solution?', back: 'XᵀX + λI is positive definite for λ > 0, so it’s invertible even when XᵀX isn’t (more features than samples, or collinear features).' },
   { id: 'l2-np-solve-why', front: `Why <code>np.linalg.solve(A, b)</code> rather than <code>inv(A) @ b</code>?`, back: `It’s faster and more accurate, and never forms the inverse.` },
  ]}
 ]};

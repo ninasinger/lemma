@@ -36,38 +36,6 @@ const gen = {
       ex: `σ${'₁₂₃'[j - 1]}² / (n − 1) = ${S[j - 1]}² / ${n1} = ${num(a)}.`, py: `S = np.array(${py(S)})\nans = S[${j - 1}]**2 / (${n1 + 1} - 1)` };
   },
 
-  cRank(v) {
-    const r = v.int(1, 4), z = v.int(1, 3), S = [...Array.from({ length: r }, () => +(v.int(5, 90) / 10).toFixed(1)).sort((a, b) => b - a), ...Array(z).fill(0)];
-    return { front: `How do you read the rank of A from its SVD? Find it for singular values S = [${S.join(', ')}].`, back: `Count the non-zero singular values: <b>${r}</b> here.`, a: r,
-      py: `ans = np.linalg.matrix_rank(np.diag(${py(S)}))` };
-  },
-  cStorage(v) {
-    const m = v.pick([64, 100, 128, 200, 256, 500]), n = v.pick([50, 80, 100, 300, 1000]), k = v.pick([1, 2, 5, 10, 20]), a = k * (m + n + 1);
-    return { front: `How many numbers does a rank-${k} approximation of a ${m}×${n} matrix need?`,
-      back: `k(m + n + 1) = ${k}·(${m} + ${n} + 1) = <b>${big(a)}</b>: k columns of U, k rows of Vᵀ and k singular values.`, a, py: `ans = ${k} * (${m} + ${n} + 1)` };
-  },
-  cPca(v) {
-    const n1 = v.pick([25, 50, 100]), S = v.pick([[20, 10], [30, 10], [10, 5], [40, 20]]), j = v.int(1, 2), a = (S[j - 1] ** 2) / n1;
-    return { front: `Centered X = UΣVᵀ with n = ${n1 + 1} samples and singular values ${S.join(', ')}. Where are the principal directions, and what is the variance along PC${j}?`,
-      back: `The principal directions are the columns of V (rows of Vᵀ). Variance along PCᵢ = σᵢ² / (n − 1): here ${S[j - 1]}² / ${n1} = <b>${num(a)}</b>.`, a,
-      py: `ans = ${S[j - 1]}**2 / (${n1 + 1} - 1)` };
-  },
-  cShapes(v) {
-    const n = v.pick([100, 200, 500]), d = v.pick([3, 5, 10, 20, 64]);
-    return { front: `<code>U, S, Vt = np.linalg.svd(X, full_matrices=False)</code> for X of shape (${n}, ${d}). Shapes?`, back: `U (${n}, ${d}), S (${d},), Vt (${d}, ${d}).`, a: shape(n, d),
-      py: `U, S, Vt = np.linalg.svd(rng.normal(size=(${n}, ${d})), full_matrices=False)\nassert S.shape == (${d},) and Vt.shape == (${d}, ${d})\nans = U.shape` };
-  },
-  cRankK(v) {
-    const n = v.pick([100, 200, 500]), d = v.pick([10, 20, 64]), k = v.int(2, 5);
-    return { front: `Rank-${k} reconstruction in NumPy, for X of shape (${n}, ${d})?`, back: `<code>U[:, :${k}] * S[:${k}] @ Vt[:${k}]</code>: (${n}, ${k}) @ (${k}, ${d}) → <b>(${n}, ${d})</b>.`,
-      a: shape(n, d), py: `U, S, Vt = np.linalg.svd(rng.normal(size=(${n}, ${d})), full_matrices=False)\nans = (U[:, :${k}] * S[:${k}] @ Vt[:${k}]).shape` };
-  },
-  cFull(v) {
-    const n = v.pick([50, 100, 200, 500]), d = v.pick([3, 5, 10, 20]);
-    return { front: `What does <code>full_matrices=True</code> (the default) change, for X of shape (${n}, ${d})?`,
-      back: `U becomes <b>(${n}, ${n})</b>: square, with ${n - d} extra columns that never meet a singular value. Use <code>full_matrices=False</code> for data.`, a: shape(n, n),
-      py: `U, S, Vt = np.linalg.svd(np.zeros((${n}, ${d})))\nans = U.shape` };
-  },
 };
 
 export default {id:'svd',title:'SVD',sub:'Every matrix is a rotation, a stretch, and another rotation.',c:'svd',
@@ -92,7 +60,7 @@ S**2 / (n - 1)              # (d,): PCA eigenvalues</pre>`,
  cards:[
   { id: 'svd-def', front: `What is the SVD of a matrix A?`, back: `A = U Σ Vᵀ. U and V are orthogonal (rotations, maybe with a flip); Σ is diagonal with σ₁ ≥ σ₂ ≥ … ≥ 0.` },
   { id: 'svd-geo', front: `What does A do to the unit circle, in SVD terms?`, back: `Vᵀ rotates it, Σ stretches the axes by σ₁ and σ₂, U rotates again. The result is an ellipse with semi-axes σ₁ and σ₂.` },
-  { id: 'svd-rank', front: `How do you read the rank of A from its SVD?`, back: `Count the non-zero singular values.`, gen: gen.cRank },
+  { id: 'svd-rank', front: `How do you read the rank of A from its SVD?`, back: `Count the non-zero singular values.` },
   { id: 'svd-exists', front: `Which matrices have an SVD?`, back: `Every matrix, of any shape. Eigendecomposition needs a square matrix and doesn’t always exist.` },
  ]},
  {id:'svd-2',title:'Compression & the PCA link',steps:[
@@ -106,8 +74,8 @@ S**2 / (n - 1)              # (d,): PCA eigenvalues</pre>`,
  ],
  cards:[
   { id: 'svd-trunc', front: `What is the best rank-k approximation of A, and in what sense?`, back: `Keep the top k terms: σ₁u₁v₁ᵀ + … + σₖuₖvₖᵀ. It minimizes the error in Frobenius norm (total squared error) and in spectral norm: the Eckart–Young theorem.` },
-  { id: 'svd-storage', front: `How many numbers does a rank-k approximation of an m×n matrix need?`, back: `k(m + n + 1): k columns of U, k rows of Vᵀ and k singular values.`, gen: gen.cStorage },
-  { id: 'svd-pca', front: `Centered X = UΣVᵀ. Where are the principal directions and their variances?`, back: `The principal directions are the columns of V (rows of Vᵀ). Variance along PCᵢ = σᵢ² / (n − 1).`, gen: gen.cPca },
+  { id: 'svd-storage', front: `How many numbers does a rank-k approximation of an m×n matrix need?`, back: `k(m + n + 1): k columns of U, k rows of Vᵀ and k singular values.` },
+  { id: 'svd-pca', front: `Centered X = UΣVᵀ. Where are the principal directions and their variances?`, back: `The principal directions are the columns of V (rows of Vᵀ). Variance along PCᵢ = σᵢ² / (n − 1).` },
   { id: 'svd-why', front: `Why compute PCA from the SVD of X instead of the eigenvectors of XᵀX?`, back: `Forming XᵀX squares the condition number, so small components lose precision. The SVD of X avoids that. Which solver a given library uses varies.` },
  ]},
  {id:'svd-3',title:'SVD in NumPy',steps:[
@@ -128,11 +96,11 @@ var = S**2 / (n - 1)             # (20,): the PCA eigenvalues, largest first</pr
   {t:'mc',q:'U has shape (500, 20) and S has shape (20,). What does <code>U * S</code> do?',o:['Scales column j of U by S[j]','Scales row j of U by S[j]','Takes a dot product','Raises an error'],ex:'Broadcasting lines up the trailing 20s, so S is reused for every row: entry [i, j] becomes U[i, j]·S[j].'}
  ],
  cards:[
-  { id: 'svd-np-shapes', front: `<code>U, S, Vt = np.linalg.svd(X, full_matrices=False)</code> for X of shape (n, d) with n &gt; d. Shapes?`, back: `U (n, d), S (d,), Vt (d, d).`, gen: gen.cShapes },
+  { id: 'svd-np-shapes', front: `<code>U, S, Vt = np.linalg.svd(X, full_matrices=False)</code> for X of shape (n, d) with n &gt; d. Shapes?`, back: `U (n, d), S (d,), Vt (d, d).` },
   { id: 'svd-np-s1d', front: `Is S from <code>np.linalg.svd</code> a matrix?`, back: `No: a 1-D array of singular values, largest first. <code>np.diag(S)</code> builds the diagonal matrix.` },
   { id: 'svd-np-us', front: `What does <code>U * S</code> compute?`, back: `It scales column j of U by S[j] (broadcasting). Same as <code>U @ np.diag(S)</code>, but cheaper.` },
-  { id: 'svd-np-rankk', front: `Rank-k reconstruction in NumPy?`, back: `<code>U[:, :k] * S[:k] @ Vt[:k]</code>: (n, k) @ (k, d) → (n, d).`, gen: gen.cRankK },
-  { id: 'svd-np-full', front: `What does <code>full_matrices=True</code> (the default) change?`, back: `U becomes (n, n): square, with extra columns that never meet a singular value. Use <code>full_matrices=False</code> for data.`, gen: gen.cFull },
+  { id: 'svd-np-rankk', front: `Rank-k reconstruction in NumPy?`, back: `<code>U[:, :k] * S[:k] @ Vt[:k]</code>: (n, k) @ (k, d) → (n, d).` },
+  { id: 'svd-np-full', front: `What does <code>full_matrices=True</code> (the default) change?`, back: `U becomes (n, n): square, with extra columns that never meet a singular value. Use <code>full_matrices=False</code> for data.` },
   { id: 'svd-np-order', front: `Sort order of <code>np.linalg.eigh</code> vs <code>np.linalg.svd</code>?`, back: `eigh: ascending. svd: descending (largest σ first).` },
  ]}
 ]};

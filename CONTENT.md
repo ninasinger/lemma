@@ -38,7 +38,7 @@ A lesson passes when every question has been answered right. A missed question (
 
 ## Fresh numbers
 
-Every `num` and `shape` step, and any card built around a computation, carries `gen(v)`: a function that returns the fields that change, built from random numbers. The app calls it each time the item is shown (a retry, a missed question coming back, a flashcard review), so the same numbers never come twice. `npm test` fails if a `num` or `shape` step has no `gen`.
+Every `num` and `shape` step carries `gen(v)`: a function that returns the fields that change, built from random numbers. The app calls it each time the item is shown (a retry, a missed question coming back, a flashcard review), so the same numbers never come twice. `npm test` fails if a `num` or `shape` step has no `gen`.
 
 ```js
 const gen = {
@@ -53,7 +53,6 @@ const gen = {
 
 - `v` has `int`, `nz`, `pick`, `sign`, `vec`, `mat` and `sizes(k)` (k different realistic sizes, so a shape mix-up can't hide behind two equal lengths). Format with `num`, `list`, `mtx`, `shape`, `big` and `dotTerms` from `public/js/vary.js`.
 - Return `py`: Python that recomputes the answer from the same numbers and sets `ans` (a number, a list, or a shape tuple; a `ValueError` means `error`). `npm run verify:py` runs 25 seeded samples of every generator through NumPy. Write it a different way from the JavaScript where you can, e.g. run the actual NumPy line for a shape.
-- A card's `gen` returns `front` and `back` (plus `a` and `py` when there is one checkable answer). Keep the idea of the card and change the worked example.
 - Keep the written `q`, `a` and `ex` as the canonical example; `scripts/verify_numpy.py` checks those too.
 
 ## Four kinds of practice
@@ -89,7 +88,7 @@ Short recall builds memory; interviews test whether you can produce and defend a
 
 ## Flashcards
 
-Every lesson should end with 3–6 cards: `{ id, front, back }`, both HTML. A card is unlocked when its lesson is finished, then scheduled with Anki's SM-2 rules (`public/js/srs.js`). Good cards ask one thing, have a short answer, and include at least one about **shapes** whenever code is involved.
+Every lesson should end with 3–6 cards: `{ id, front, back }`, both HTML. Cards are **context review**: concepts, rules, shapes and judgments, never arithmetic or derivations. Number drills belong in the lesson, where they get fresh numbers; `npm test` fails if a card has a `gen`. A card is unlocked when its lesson is finished, then scheduled with Anki's SM-2 rules (`public/js/srs.js`). Good cards ask one thing, have a short answer, and include at least one about **shapes** whenever code is involved.
 
 A card can also be an interview card: add `kind`, `rubric` (3–5 points) and optionally `secs`. In review it shows an answer box and a timer, and after the reveal the rubric; the share of points ticked suggests a grade (under 50% Again, under 80% Hard, otherwise Good).
 

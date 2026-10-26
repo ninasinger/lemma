@@ -106,6 +106,10 @@ test('every numeric and shape question draws fresh numbers', () => {
   for (const l of lessons) for (const s of l.steps) if (s.t === 'num' || s.t === 'shape') assert.ok(s.gen, `${l.id}: ${s.q}`);
 });
 
+test('flashcards are context review: none makes you compute', () => {
+  for (const c of cards) assert.ok(!c.gen, `${c.id}: number drills belong in lessons, not on cards`);
+});
+
 test('an item without a generator is shown as written', () => {
   const card = cards.find((c) => !c.gen);
   assert.equal(vary(card), card);

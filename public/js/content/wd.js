@@ -45,45 +45,6 @@ const gen = {
       py: `x, dy = np.zeros((4, ${i})), np.ones((4, ${o}))\nans = (dy.T @ x).shape` };
   },
 
-  cUpdate(v) {
-    const w = v.pick([1, 2, -1, 0.5]), eta = v.pick([0.1, 0.01]), lam = v.pick([0.1, 0.5, 1]), g = v.pick([-2, -1, 0.5, 1, 3]), a = +((1 - eta * lam) * w - eta * g).toFixed(6);
-    return { front: `Write the weight-decay update rule, then apply one step to w = ${num(w)} with η = ${num(eta)}, λ = ${num(lam)} and ∇L = ${num(g)}.`,
-      back: `w ← (1 − ηλ)·w − η·∇L = ${num(1 - eta * lam)} × ${num(w)} − ${num(eta)} × ${num(g)} = <b>${num(a)}</b>.`, a,
-      py: `w = ${w}\nans = w - ${eta} * (${g} + ${lam} * w)` };
-  },
-  cExp(v) {
-    const w0 = v.pick([1, 2, 5, 10]), el = v.pick([0.01, 0.005, 0.02]), t = v.pick([50, 100, 200]), a = +(w0 * (1 - el) ** t).toFixed(3);
-    return { front: `With zero gradient, what happens to w over t steps of weight decay? Take w₀ = ${w0}, ηλ = ${num(el)} and t = ${t}.`,
-      back: `w_t = (1 − ηλ)ᵗ·w₀: exponential decay toward 0. Here ${num(1 - el)}${sup(t)} × ${w0} ≈ <b>${num(a, 3)}</b>.`, a, tol: 0.002,
-      py: `w = ${w0}\nfor _ in range(${t}):\n    w *= 1 - ${el}\nans = w` };
-  },
-  cFirstStep(v) {
-    const g = v.pick([-3, -0.2, -0.01, 0.003, 0.5, 4, 25]), eta = v.pick([0.1, 0.01, 0.001]), a = -eta * Math.sign(g);
-    return { front: `What is Adam’s first step for a coordinate with gradient g = ${num(g)}, with η = ${num(eta)}?`,
-      back: `η·sign(g): on step 1, m̂ = g and v̂ = g², so the step is η·g/|g| (ignoring ε). The weight changes by <b>${num(a)}</b>, whatever the size of g.`, a, tol: 1e-6,
-      py: `g, eta, b1, b2 = ${g}, ${eta}, 0.9, 0.999\nm, s = (1 - b1) * g, (1 - b2) * g * g\nans = -eta * (m / (1 - b1)) / (np.sqrt(s / (1 - b2)) + 1e-12)` };
-  },
-  cCoupling(v) {
-    const lam = v.pick([0.01, 0.05, 0.1]), lr = v.pick([0.001, 0.0003]), T = v.pick([2000, 5000, 10000]);
-    const f1 = (1 - lr * lam) ** T, f2 = (1 - (lr / 2) * lam) ** T;
-    return { front: `Why does changing the learning rate change regularization in PyTorch’s AdamW? Compare lr = ${LR[lr]} with half that, over ${big(T)} steps at λ = ${num(lam)}.`,
-      back: `Each step shrinks w by lr·λ, so the total shrink ≈ exp(−λ Σ lr_t): an unused weight ends at <b>${num(f1, 3)}</b> at full lr but ${num(f2, 3)} at half. Halving lr halves the decay.`, a: +f1.toFixed(3), tol: 0.002,
-      py: `ans = (1 - ${lr} * ${lam}) ** ${T}` };
-  },
-  cLinear(v) {
-    const i = v.pick(IN), o = v.pick(OUT);
-    return { front: `<code>nn.Linear(in_features=${i}, out_features=${o})</code>: shapes of weight and bias?`, back: `weight <b>(${o}, ${i})</b>, i.e. (out, in). bias (${o},).`, a: shape(o, i),
-      py: `W, bias = np.zeros((${o}, ${i})), np.zeros(${o})\n_ = np.zeros((2, ${i})) @ W.T + bias\nans = W.shape` };
-  },
-  cForward(v) {
-    const b = v.pick([8, 32, 64, 256]), i = v.pick(IN), o = v.pick(OUT);
-    return { front: `What does <code>nn.Linear(${i}, ${o})</code> compute for x of shape (${b}, ${i})?`, back: `<code>x @ W.T + b</code>, giving shape <b>(${b}, ${o})</b>.`, a: shape(b, o),
-      py: `ans = (np.zeros((${b}, ${i})) @ np.zeros((${o}, ${i})).T + np.zeros(${o})).shape` };
-  },
-  cRow(v) {
-    const i = v.pick(IN), o = v.pick(OUT), j = v.int(0, o - 1);
-    return { front: `In <code>nn.Linear(${i}, ${o})</code>, what is row ${j} of the weight matrix?`, back: `The ${i} incoming weights of output unit ${j}.` };
-  },
 };
 
 export default {
@@ -109,8 +70,8 @@ p.grad.shape == p.shape     # always (or p.grad is None)</pre>`,
         { t: 'num', q: 'ηλ = 0.01 and the gradient is 0. After 100 steps, the weight has been multiplied by about…', a: 0.366, tol: 0.01, ex: '0.99¹⁰⁰ ≈ 0.366, very close to e⁻¹ ≈ 0.368.', gen: gen.manySteps },
       ],
       cards: [
-        { id: 'wd-update', front: 'Write the weight-decay update rule.', back: 'w ← (1 − ηλ)·w − η·∇L.', gen: gen.cUpdate },
-        { id: 'wd-exp', front: 'With zero gradient, what happens to w over t steps of weight decay?', back: 'w_t = (1 − ηλ)ᵗ·w₀: exponential decay toward 0.', gen: gen.cExp },
+        { id: 'wd-update', front: 'Write the weight-decay update rule.', back: 'w ← (1 − ηλ)·w − η·∇L.' },
+        { id: 'wd-exp', front: 'With zero gradient, what happens to w over t steps of weight decay?', back: 'w_t = (1 − ηλ)ᵗ·w₀: exponential decay toward 0.' },
         { id: 'wd-unused', front: 'With weight decay on, what happens to weights the loss doesn’t need?', back: 'Nothing defends them, so they decay to zero. Useful weights settle a little smaller than the loss alone would choose.' },
       ],
     },
@@ -137,10 +98,10 @@ p.grad.shape == p.shape     # always (or p.grad is None)</pre>`,
         { id: 'wd-adam-full', front: 'Write Adam’s update.', back: 'm ← β₁m + (1 − β₁)g<br>v ← β₂v + (1 − β₂)g²<br>m̂ = m/(1 − β₁ᵗ), v̂ = v/(1 − β₂ᵗ)<br>w ← w − η·m̂/(√v̂ + ε)' },
         { id: 'wd-adam', front: 'In Adam + L2, where does the penalty go?', back: 'λw is added to g, so it enters both m and v and is divided by √v̂. Its effect per step depends on each weight’s gradient history.' },
         { id: 'wd-adamw', front: 'Write the AdamW update as PyTorch implements it.', back: 'w ← w·(1 − lr·λ), then the Adam step using only the data gradient ∇L.' },
-        { id: 'wd-first-step', front: 'What is Adam’s first step for a coordinate with gradient g?', back: 'η·sign(g): on step 1, m̂ = g and v̂ = g², so the step is η·g/|g| (ignoring ε).', gen: gen.cFirstStep },
-        { id: 'wd-lr-coupling', front: 'Why does changing the learning rate change regularization in PyTorch’s AdamW?', back: 'Each step shrinks w by lr·λ, so the total shrink ≈ exp(−λ Σ lr_t). Halving lr halves the decay.', gen: gen.cCoupling },
+        { id: 'wd-first-step', front: 'What is Adam’s first step for a coordinate with gradient g?', back: 'η·sign(g): on step 1, m̂ = g and v̂ = g², so the step is η·g/|g| (ignoring ε).' },
+        { id: 'wd-lr-coupling', front: 'Why does changing the learning rate change regularization in PyTorch’s AdamW?', back: 'Each step shrinks w by lr·λ, so the total shrink ≈ exp(−λ Σ lr_t). Halving lr halves the decay.' },
         { id: 'wd-portable', front: 'Is a tuned λ portable from Adam + L2 to AdamW, or from SGD to SGD with momentum?', back: 'No. The same λ produces very different shrinkage under different update rules. Retune it when the optimizer changes.' },
-        { id: 'wd-derive-two-updates', kind: 'derive', secs: 120, front: 'w = [1, 1], data gradients [1, 0], η = 0.01, λ = 0.1. Compute the first Adam + L2 and AdamW updates and explain the difference.', back: 'Step 1 moves each coordinate by η·sign(g). Adam + L2: g = [1.1, 0.1] → w = [0.99, 0.99]. AdamW: shrink to [0.999, 0.999], then step on [1, 0] → [0.989, 0.999].', rubric: ['First step is η·sign(g)', 'Adam + L2: [0.99, 0.99]', 'AdamW: [0.989, 0.999]', 'Normalization rescales the L2 term per coordinate'] },
+        { id: 'wd-derive-two-updates', front: 'Why do Adam + L2 and AdamW decay weights differently?', back: 'Adam + L2 adds λw to the gradient, so Adam’s per-coordinate scaling rescales the decay. AdamW shrinks w directly, outside the adaptive step, so every weight decays at the same rate.' },
         { id: 'wd-defend-sweep', kind: 'defend', secs: 90, front: 'With a fixed compute budget, design an experiment to decide whether weight decay is mis-set in an AdamW training run.', back: 'Hold data, steps, schedule and seeds fixed. Sweep weight_decay on a log grid that includes 0, keeping lr fixed (or sweep lr × λ jointly, since they couple). Run 2–3 seeds at the promising points. Judge on validation loss and important slices, check parameter norms to confirm the knob moved something, and decide in advance how big a gain must be relative to seed-to-seed spread to change the default.', rubric: ['Changes only the knob under test', 'Log-spaced grid including 0', 'Handles the lr × λ coupling', 'Multiple seeds, with a decision threshold set against noise', 'Judges on validation (plus slices or norms), not training loss'] },
       ],
     },
@@ -175,9 +136,9 @@ opt = torch.optim.AdamW([
         { t: 'mc', q: 'Why does <code>p.ndim &gt;= 2</code> usually pick out the parameters to decay?', o: ['Weight matrices are 2-D; biases and norm gains are 1-D', '2-D parameters train faster', 'PyTorch requires it', 'It skips the embeddings'], ex: 'It’s a shape-based shortcut for a common convention, not a rule. Check whether it matches what you intend for embeddings and any special parameters.' },
       ],
       cards: [
-        { id: 'wd-np-linear', front: '<code>nn.Linear(in_features=784, out_features=128)</code>: shapes of weight and bias?', back: 'weight (128, 784), i.e. (out, in). bias (128,).', gen: gen.cLinear },
-        { id: 'wd-np-forward', front: 'What does <code>nn.Linear</code> compute for x of shape (batch, in)?', back: '<code>x @ W.T + b</code>, giving shape (batch, out).', gen: gen.cForward },
-        { id: 'wd-np-row', front: 'In <code>nn.Linear</code>, what is row j of the weight matrix?', back: 'The incoming weights of output unit j.', gen: gen.cRow },
+        { id: 'wd-np-linear', front: '<code>nn.Linear(in_features=784, out_features=128)</code>: shapes of weight and bias?', back: 'weight (128, 784), i.e. (out, in). bias (128,).' },
+        { id: 'wd-np-forward', front: 'What does <code>nn.Linear</code> compute for x of shape (batch, in)?', back: '<code>x @ W.T + b</code>, giving shape (batch, out).' },
+        { id: 'wd-np-row', front: 'In <code>nn.Linear</code>, what is row j of the weight matrix?', back: 'The incoming weights of output unit j.' },
         { id: 'wd-np-grad', front: 'What shape is a parameter’s gradient?', back: 'Exactly the parameter’s shape (or <code>None</code> if it wasn’t used).' },
         { id: 'wd-np-none', front: 'In PyTorch’s optimizers, how does <code>grad=None</code> differ from a gradient of zeros?', back: 'None: the parameter is skipped entirely, with no step and no weight decay. Zeros: it is processed, so decay applies and Adam’s moments keep decaying.' },
         { id: 'wd-nodecay', front: 'Which parameters usually get no weight decay, and is that a rule?', back: 'Biases and normalization gains, by convention (often selected with <code>p.ndim &lt; 2</code>). It’s a heuristic and a modeling choice worth testing, not a rule.' },

@@ -1,4 +1,4 @@
-import { num, term, list, shape, dot, dotTerms, py } from '../vary.js';
+import { num, list, shape, dot, dotTerms, py } from '../vary.js';
 
 // Fresh numbers every time a question or card is shown (see ../vary.js).
 // Three eigenvalues, largest first, whose total divides 100 so percentages come out whole.
@@ -41,38 +41,6 @@ const gen = {
       py: `Z, W, mu = np.zeros((${n}, ${k})), np.zeros((${d}, ${k})), np.zeros(${d})\nans = (Z @ W.T + mu).shape` };
   },
 
-  cRatio(v) {
-    const L = eigenvalues(v), T = L[0] + L[1] + L[2], k = v.int(1, 3);
-    return { front: `What is the explained-variance ratio of PCᵢ? Find it for PC${k} when the eigenvalues are ${L.join(', ')}.`,
-      back: `λᵢ / (λ₁ + λ₂ + … + λ_d). Here ${L[k - 1]} / ${T} = <b>${num(L[k - 1] / T)}</b>.`, a: L[k - 1] / T,
-      py: `vals = np.array(${py(L)})\nans = vals[${k - 1}] / vals.sum()` };
-  },
-  cCov(v) {
-    const [n, d] = v.sizes(2);
-    return { front: `X has shape (${n}, ${d}). What is the shape of <code>Xc.T @ Xc / (${n} - 1)</code>?`, back: `<b>(${d}, ${d})</b>: the covariance matrix, one entry per pair of features.`,
-      a: shape(d, d), py: `Xc = np.zeros((${n}, ${d}))\nans = (Xc.T @ Xc / (${n} - 1)).shape` };
-  },
-  cEigh(v) {
-    const d = v.int(3, 8), k = v.int(1, 2);
-    return { front: `After <code>vals, vecs = np.linalg.eigh(C)</code> for a (${d}, ${d}) covariance matrix C, which column of <code>vecs</code> is PC${k}?`,
-      back: `<b><code>vecs[:, ${d - k}]</code></b>. Eigenvectors are columns, and eigenvalues come back in <b>ascending</b> order, so PC1 is the last column. Reverse them to put PC1 first.`, a: d - k,
-      py: `vals, vecs = np.linalg.eigh(np.diag(np.arange(1.0, ${d + 1})))\nans = int(np.argsort(vals)[::-1][${k - 1}])` };
-  },
-  cProj(v) {
-    const [n, d] = v.sizes(2, [100, 200, 500, 1000, 20, 50, 64]), k = v.int(2, Math.min(5, d - 1));
-    return { front: `Shapes in <code>Z = Xc @ W</code> with ${k} components, for ${n} samples with ${d} features?`, back: `Xc (${n}, ${d}) @ W (${d}, ${k}) → Z <b>(${n}, ${k})</b>.`,
-      a: shape(n, k), py: `ans = (np.zeros((${n}, ${d})) @ np.zeros((${d}, ${k}))).shape` };
-  },
-  cZij(v) {
-    const i = v.int(0, 99), j = v.int(0, 2);
-    return { front: `In PCA, what does Z[${i}, ${j}] mean?`, back: `The coordinate of sample ${i} along principal direction ${j} (PC${j + 1}): centered sample ${i} dotted with column ${j} of W.` };
-  },
-  cRecon(v) {
-    const [n, d] = v.sizes(2, [100, 200, 500, 1000, 20, 50, 64]), k = v.int(2, Math.min(5, d - 1));
-    return { front: `How do you reconstruct X from ${k} components, for ${n} samples with ${d} features?`,
-      back: `<code>Z @ W.T + mu</code>: (${n}, ${k}) @ (${k}, ${d}) → <b>(${n}, ${d})</b>, then add the mean back.`, a: shape(n, d),
-      py: `ans = (np.zeros((${n}, ${k})) @ np.zeros((${d}, ${k})).T + np.zeros(${d})).shape` };
-  },
 };
 
 export default {id:'pca',title:'PCA',sub:'Find the directions where your data actually varies.',c:'pca',
@@ -110,7 +78,7 @@ X_hat = Z @ W.T + mu             # (n, d)</pre>`,
  ],
  cards:[
   { id: 'pca-eig', front: `PCA takes the eigenvectors of which matrix?`, back: `The covariance matrix C = XcᵀXc / (n − 1). Eigenvectors are the principal directions; eigenvalue λᵢ is the variance along PCᵢ.` },
-  { id: 'pca-ratio', front: `What is the explained-variance ratio of PCᵢ?`, back: `λᵢ / (λ₁ + λ₂ + … + λ_d).`, gen: gen.cRatio },
+  { id: 'pca-ratio', front: `What is the explained-variance ratio of PCᵢ?`, back: `λᵢ / (λ₁ + λ₂ + … + λ_d).` },
   { id: 'pca-orth', front: `Why are principal components orthogonal?`, back: `The covariance matrix is symmetric, and symmetric matrices have an orthonormal basis of eigenvectors (automatic for distinct eigenvalues, a choice within a repeated one). So the projected features are uncorrelated.` },
   { id: 'pca-limit', front: `What is PCA’s main limitation?`, back: `It only finds linear (straight-line) structure. Curved structure needs kernel PCA, t-SNE or UMAP.` },
  ]},
@@ -136,10 +104,10 @@ X_hat = Z @ W.T + mu              # (500, 20)  reconstruction</pre>`},
   {t:'mc',q:'In code, what fraction of variance do the top k components keep?',o:['<code>vals[:k].sum() / vals.sum()</code>','<code>vals[:k] / k</code>','<code>vecs[:, :k].sum()</code>','<code>W.sum() / d</code>'],ex:'Each eigenvalue is the variance along its component, so the kept share is the sum of the top k over the total.'}
  ],
  cards:[
-  { id: 'pca-np-cov', front: `X has shape (n, d). What is the shape of <code>Xc.T @ Xc / (n - 1)</code>?`, back: `(d, d): the covariance matrix, one entry per pair of features.`, gen: gen.cCov },
-  { id: 'pca-np-eigh', front: `After <code>vals, vecs = np.linalg.eigh(C)</code>, where is eigenvector i, and in what order?`, back: `Column <code>vecs[:, i]</code>. Eigenvalues come back in <b>ascending</b> order, so reverse them to put PC1 first.`, gen: gen.cEigh },
-  { id: 'pca-np-proj', front: `Shapes in <code>Z = Xc @ W</code> with k components?`, back: `Xc (n, d) @ W (d, k) → Z (n, k).`, gen: gen.cProj },
-  { id: 'pca-np-zij', front: `In PCA, what does Z[i, j] mean?`, back: `The coordinate of sample i along principal direction j: centered sample i dotted with PC j.`, gen: gen.cZij },
-  { id: 'pca-np-recon', front: `How do you reconstruct X from k components?`, back: `<code>Z @ W.T + mu</code>: (n, k) @ (k, d) → (n, d), then add the mean back.`, gen: gen.cRecon },
+  { id: 'pca-np-cov', front: `X has shape (n, d). What is the shape of <code>Xc.T @ Xc / (n - 1)</code>?`, back: `(d, d): the covariance matrix, one entry per pair of features.` },
+  { id: 'pca-np-eigh', front: `After <code>vals, vecs = np.linalg.eigh(C)</code>, where is eigenvector i, and in what order?`, back: `Column <code>vecs[:, i]</code>. Eigenvalues come back in <b>ascending</b> order, so reverse them to put PC1 first.` },
+  { id: 'pca-np-proj', front: `Shapes in <code>Z = Xc @ W</code> with k components?`, back: `Xc (n, d) @ W (d, k) → Z (n, k).` },
+  { id: 'pca-np-zij', front: `In PCA, what does Z[i, j] mean?`, back: `The coordinate of sample i along principal direction j: centered sample i dotted with PC j.` },
+  { id: 'pca-np-recon', front: `How do you reconstruct X from k components?`, back: `<code>Z @ W.T + mu</code>: (n, k) @ (k, d) → (n, d), then add the mean back.` },
  ]}
 ]};

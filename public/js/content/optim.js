@@ -114,23 +114,6 @@ const gen = {
       ex: kind === 'var' ? 'It makes memorization harder: the variance side.' : 'It makes fitting easier: the bias side.' };
   },
 
-  cGd(v) {
-    const w = v.pick([-1, 1, 2, 3]), g = v.nz(-6, 6), eta = v.pick([0.1, 0.5]), w1 = +(w - eta * g).toFixed(6);
-    return { front: `w = ${num(w)}, ∇L = ${num(g)}, η = ${num(eta)}. New w?`, back: `${num(w)} − ${num(eta)} × ${term(g)} = <b>${num(w1)}</b>.`, a: w1, py: `ans = ${w} - ${eta} * ${g}` };
-  },
-  cBatch(v) {
-    const gs = v.vec(4, -6, 9), i = v.int(0, 2), j = v.int(i + 1, 3), m = (gs[i] + gs[j]) / 2;
-    return { front: `Gradients ${list(gs)}. Batch of examples ${i} and ${j}: its gradient? The full gradient?`, back: `Batch: <b>${num(m)}</b>. Full: <b>${num(mean(gs))}</b>. Noisy, right on average.`,
-      a: [m, mean(gs)], py: `g = np.array(${py(gs)})\nans = [g[[${i}, ${j}]].mean(), g.mean()]` };
-  },
-  cUpdates(v) {
-    const N = v.pick([32000, 64000, 128000]), B = v.pick([32, 64, 128, 256]);
-    return { front: `${big(N)} examples, batch size ${B}. Updates per epoch?`, back: `${big(N)} / ${B} = <b>${big(N / B)}</b>.`, a: N / B, py: `ans = len(range(0, ${N}, ${B}))` };
-  },
-  cDiagnose(v) {
-    const D = gen.diagnose(v);
-    return { front: D.q.replace(', both measured the same way. What does this most likely suggest?', '. Diagnosis?'), back: `<b>${D.o[0]}</b>. ${D.ex}` };
-  },
 };
 
 export default {
@@ -186,7 +169,6 @@ export default {
         { id: 'opt-gd-update', front: 'The gradient-descent update?', back: 'w ← w − η∇L(w).' },
         { id: 'opt-uphill', front: 'Which way does the gradient point?', back: 'Uphill. Step along the negative gradient.' },
         { id: 'opt-minibatch', front: 'Full-batch GD vs mini-batch SGD?', back: 'Whole training set per update vs a random subset: cheaper updates, many more of them.' },
-        { id: 'opt-gd-drill', front: 'w = 2, ∇L = 4, η = 0.1. New w?', back: '2 − 0.1 × 4 = <b>1.6</b>.', gen: gen.cGd },
       ],
     },
     {
@@ -208,7 +190,6 @@ export default {
         { id: 'opt-sgd-hook', front: 'SGD in one line?', back: 'Noisy direction, right direction on average.' },
         { id: 'opt-weird-batch', front: 'A weird batch vs systematically weird batching?', back: 'Variance vs bias.' },
         { id: 'opt-shuffle', front: 'Why shuffle?', back: 'So the data’s order doesn’t keep producing correlated or unrepresentative batches.' },
-        { id: 'opt-batch-drill', front: 'Gradients [4, −2, 6, 0]. Batch of examples 0 and 2: its gradient? The full gradient?', back: 'Batch: <b>5</b>. Full: <b>2</b>. Noisy, right on average.', gen: gen.cBatch },
       ],
     },
     {
@@ -227,7 +208,7 @@ export default {
       cards: [
         { id: 'opt-noise-batch', front: 'What happens to gradient noise as batch size increases?', back: 'It decreases.' },
         { id: 'opt-batch-hook', front: 'Bigger batch → ?', back: 'Fewer, cleaner updates.' },
-        { id: 'opt-updates', front: '32,000 examples, batch size 32. Updates per epoch?', back: '<b>1,000</b>.', gen: gen.cUpdates },
+        { id: 'opt-updates', front: 'Updates per epoch?', back: 'About N / batch size: bigger batches, fewer updates.' },
         { id: 'opt-lr-batch', front: 'Larger learning rate with larger batch: rule or heuristic?', back: 'A useful heuristic, not a universal law.' },
       ],
     },
@@ -271,7 +252,6 @@ export default {
         { id: 'opt-fix-var', front: 'Variance → ?', back: 'Make memorization harder: weight decay, dropout, early stopping, smaller model, more data, augmentation.' },
         { id: 'opt-fix-bias', front: 'Bias → ?', back: 'Make fitting easier: more capacity, train longer, less regularization, better features or architecture.' },
         { id: 'opt-healthy', front: 'What does a healthy train/validation pattern look like?', back: 'Low training error, slightly higher but still good validation error.' },
-        { id: 'opt-diag-drill', front: 'Training error 2%, validation error 18%. Diagnosis?', back: '<b>High variance (overfitting)</b>. Make memorization harder.', gen: gen.cDiagnose },
       ],
     },
   ],

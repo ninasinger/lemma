@@ -125,27 +125,6 @@ const gen = {
       py: `ans = ${g} * deriv(lambda x: ${p} * x + x**2, ${x})` };
   },
 
-  cTotal(v) {
-    const G = graph(v);
-    return { front: `${show(G)}. ∂y/∂x?`, back: `${edges(G)} + ${term(G.r)} = <b>${num(G.r + G.ind)}</b>.`, a: G.r + G.ind, py: `ans = deriv(${fy(G)}, ${G.x})` };
-  },
-  cValueVsLocal(v) {
-    const a = v.nz(-5, 6);
-    return { front: `b = a², a = ${num(a)}. Value of b, and ∂b/∂a?`, back: `b = <b>${num(a * a)}</b>; ∂b/∂a = 2a = <b>${num(2 * a)}</b>. Different numbers.`, a: [a * a, 2 * a],
-      py: `ans = [(${a})**2, deriv(lambda a: a**2, ${a})]` };
-  },
-  cLocal(v) {
-    const L = local(v);
-    return { front: L.q, back: `<b>${num(L.a)}</b>. ${L.ex}`, a: L.a, py: L.py };
-  },
-  cBranch(v) {
-    const p = v.int(2, 6), x = v.nz(-4, 5);
-    return { front: `a = ${p}x, b = x², y = a + b, x = ${num(x)}. dy/dx?`, back: `${p} + ${term(2 * x)} = <b>${num(p + 2 * x)}</b>.`, a: p + 2 * x, py: `ans = deriv(lambda x: ${p} * x + x**2, ${x})` };
-  },
-  cIncoming(v) {
-    const G = graph(v), g = v.pick([2, -1, 0.5, 3]), t = G.r + G.ind;
-    return { front: `${show(G)}, ∂L/∂y = ${num(g)}. ∂L/∂x?`, back: `${num(g)} × ${term(t)} = <b>${num(g * t)}</b>.`, a: +(g * t).toFixed(6), py: `ans = ${g} * deriv(${fy(G)}, ${G.x})` };
-  },
 };
 
 export default {
@@ -177,8 +156,8 @@ export default {
       ],
       cards: [
         { id: 'ad-checklist', front: 'The five-step checklist?', back: 'Write the paths. Compute values. One local derivative per edge. Multiply along each path. Add across paths.' },
-        { id: 'ad-example', front: 'x = 2, a = 2x, b = a², c = 4b, y = c + 3x. ∂y/∂x?', back: '1 × 4 × 8 × 2 + 3 = <b>67</b>.', gen: gen.cTotal },
-        { id: 'ad-value-local', front: 'b = a², a = 4. Value of b, and ∂b/∂a?', back: 'b = <b>16</b>; ∂b/∂a = 2a = <b>8</b>. Different numbers.', gen: gen.cValueVsLocal },
+        { id: 'ad-example', front: 'x reaches y directly and through a chain. How do you get ∂y/∂x?', back: 'Multiply the edge derivatives along the chain, then add the direct edge.' },
+        { id: 'ad-value-local', front: 'b = a². Is b’s value the same as ∂b/∂a?', back: 'No: the value is a²; the local derivative is 2a.' },
         { id: 'ad-miss-indirect', front: 'Answer came out as just the direct edge. What was missed?', back: 'The indirect path.' },
       ],
     },
@@ -198,8 +177,7 @@ export default {
       ],
       cards: [
         { id: 'ad-incoming', front: 'The incoming gradient isn’t 1. What do you do?', back: 'Multiply it in: incoming × local.' },
-        { id: 'ad-local-drill', front: 'c = a·b, a = 2, b = 3, ∂L/∂c = 5. Gradient to a?', back: '<b>15</b>.', gen: gen.cLocal },
-        { id: 'ad-local-drill-2', front: 'c = x², x = 3, ∂L/∂c = 2. Gradient to x?', back: '<b>12</b>.', gen: gen.cLocal },
+        { id: 'ad-local-drill', front: 'Where does a node’s incoming gradient come from?', back: 'From downstream: ∂L/∂node, built by everything between the node and the loss.' },
         { id: 'ad-local-rules', front: 'Local derivatives of a + b, a·b, x², k·a?', back: '1 and 1; b and a; 2x; k.' },
       ],
     },
@@ -219,7 +197,6 @@ export default {
       ],
       cards: [
         { id: 'ad-skip', front: 'Why not skip an intermediate node?', back: 'Each edge has its own local derivative; skipping a node uses the wrong one.' },
-        { id: 'ad-branch', front: 'a = 2x, b = x², y = a + b, x = 3. dy/dx?', back: '2 + 6 = <b>8</b>.', gen: gen.cBranch },
         { id: 'ad-accumulate', front: '“Accumulate gradients” means?', back: 'Add the contributions.' },
         { id: 'ad-indirect', front: 'Can x affect y without being y’s parent?', back: 'Yes, through any path.' },
       ],
@@ -239,8 +216,8 @@ export default {
       ],
       cards: [
         { id: 'ad-hooks', front: 'The four memory hooks?', back: 'Incoming × local. Multiply along paths; add across. Forward = values, backward = sensitivities. One scalar loss, many parameters → reverse mode.' },
-        { id: 'ad-full', front: 'x = 1, a = 3x, b = a², c = 2b, y = c + 5x. ∂y/∂x?', back: '1 × 2 × 6 × 3 + 5 = <b>41</b>.', gen: gen.cTotal },
-        { id: 'ad-full-incoming', front: 'x = 2, a = 2x, b = a², c = 4b, y = c + 3x, ∂L/∂y = 2. ∂L/∂x?', back: '2 × 67 = <b>134</b>.', gen: gen.cIncoming },
+        { id: 'ad-full', front: 'Why compute every node’s value before any derivative?', back: 'Local derivatives use the values: ∂b/∂a = 2a needs a.' },
+        { id: 'ad-full-incoming', front: 'y feeds the loss with ∂L/∂y ≠ 1. How does that change ∂L/∂x?', back: 'Multiply the whole ∂y/∂x by ∂L/∂y.' },
         { id: 'ad-reverse', front: 'One scalar loss, many parameters → ?', back: 'Reverse mode.' },
       ],
     },

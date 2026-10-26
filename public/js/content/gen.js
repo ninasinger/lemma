@@ -18,11 +18,6 @@ const gen = {
       ex: `${num(a)}%, with zero ability to find positives. On imbalanced data, report precision, recall or PR-AUC alongside accuracy.`,
       py: `y = np.zeros(100000)\ny[:int(${p} * 1000)] = 1\nans = 100 * (y == 0).mean()` };
   },
-  cFormula(v) {
-    const [b, va, s] = [v.pick(PARTS), v.pick(PARTS), v.pick(PARTS)], t = +(b + va + s).toFixed(4);
-    return { front: `Decompose the expected squared error at x. What is it when bias² = ${num(b)}, variance = ${num(va)} and σ² = ${num(s)}?`,
-      back: `bias² + variance + σ²:<br>(f(x) − E_D f̂(x))² + Var_D f̂(x) + σ². Here ${num(b)} + ${num(va)} + ${num(s)} = <b>${num(t)}</b>.`, a: t, py: `ans = ${b} + ${va} + ${s}` };
-  },
 };
 
 export default {
@@ -49,11 +44,11 @@ export default {
         { t: 'mc', q: 'Which change mainly targets variance?', o: ['More training data or stronger regularization', 'A bigger model', 'More input features', 'Training for longer'], ex: 'More data and regularization make the fit depend less on the particular sample. The others usually add capacity, which lowers bias but can raise variance.' },
       ],
       cards: [
-        { id: 'gen-bv-formula', front: 'Decompose the expected squared error at x.', back: 'bias² + variance + σ²:<br>(f(x) − E_D f̂(x))² + Var_D f̂(x) + σ².', gen: gen.cFormula },
+        { id: 'gen-bv-formula', front: 'Decompose the expected squared error at x.', back: 'bias² + variance + σ²:<br>(f(x) − E_D f̂(x))² + Var_D f̂(x) + σ².' },
         { id: 'gen-bv-bias', front: 'What is bias, in the bias–variance sense?', back: 'The gap between the truth and the prediction averaged over training sets: f(x) − E_D[f̂_D(x)].' },
         { id: 'gen-bv-var', front: 'What is variance, in the bias–variance sense?', back: 'How much the prediction at x moves when you redraw the training set: Var_D[f̂_D(x)].' },
         { id: 'gen-bv-noise', front: 'Can more data reduce σ²?', back: 'No. σ² is irreducible noise in y given x. More data reduces variance.' },
-        { id: 'gen-bv-derive', kind: 'derive', secs: 120, front: 'Derive bias² + variance + σ² for squared loss at a fixed x.', back: 'Write y − f̂ = (f − f̄) + (f̄ − f̂) + ε with f̄ = E_D f̂. Squaring gives bias², variance and σ²; the cross terms vanish because E[ε] = 0 with ε independent of D, and E_D[f̂ − f̄] = 0.', rubric: ['Introduces f̄ = E_D[f̂]', 'Names the three terms', 'Cross terms with ε vanish', 'Bias × deviation term vanishes'] },
+        { id: 'gen-bv-derive', front: 'What assumptions make the bias–variance decomposition work?', back: 'Squared loss at a fixed x, and noise ε with mean 0, independent of the training set. Then the cross terms vanish.' },
       ],
     },
     {

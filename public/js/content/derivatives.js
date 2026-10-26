@@ -211,58 +211,6 @@ const gen = {
       py: `ans = np.zeros(${n}).size ** 2` };
   },
 
-  // Flashcards: same idea, new numbers.
-  cSquare(v) {
-    const x = v.nz(-6, 9);
-    return { front: `d/dx of x² at x = ${num(x)}?`, back: `2x = <b>${num(2 * x)}</b>.`, a: 2 * x, py: `ans = deriv(lambda x: x**2, ${x})` };
-  },
-  cNudge(v) {
-    const d = v.nz(-5, 9), dx = v.pick([0.01, 0.1]);
-    return { front: `dy/dx = ${num(d)}. x moves by ${num(dx)}. Δy ≈ ?`, back: `${num(d)} × ${num(dx)} = <b>${num(d * dx)}</b>.`, a: +(d * dx).toFixed(6), py: `ans = ${d} * ${dx}` };
-  },
-  cMul(v) {
-    const a = v.nz(-4, 9), b = v.nz(-4, 9);
-    return { front: `y = a·b, a = ${num(a)}, b = ${num(b)}. ∂y/∂a and ∂y/∂b?`, back: `<b>${num(b)}</b> and <b>${num(a)}</b>: each is the other input’s value.`, a: [b, a],
-      py: `ans = [deriv(lambda a, b: a * b, ${a}, ${b}, wrt=i) for i in (0, 1)]` };
-  },
-  cChain(v) {
-    const c = v.int(2, 4), x = v.nz(-3, 4), a = c * x;
-    return { front: `a = ${num(c)}x, y = a², x = ${num(x)}. dy/dx?`, back: `2a · ${num(c)} = ${term(2 * a)} × ${num(c)} = <b>${num(2 * a * c)}</b>.`, a: 2 * a * c, py: `ans = deriv(lambda x: (${c} * x)**2, ${x})` };
-  },
-  cChainSym(v) {
-    const c = v.int(2, 5);
-    return { front: `a = ${num(c)}x, y = a². dy/dx in terms of x?`, back: `2a · ${num(c)} = <b>${num(2 * c * c)}x</b>.`, a: 2 * c * c, py: `ans = deriv(lambda x: (${c} * x)**2, 1.0)` };
-  },
-  cBranch(v) {
-    const c = v.int(2, 6), x = v.nz(-4, 6);
-    return { front: `a = ${num(c)}x, b = x², y = a + b, x = ${num(x)}. dy/dx?`, back: `${num(c)} + ${term(2 * x)} = <b>${num(c + 2 * x)}</b>.`, a: c + 2 * x, py: `ans = deriv(lambda x: ${c} * x + x**2, ${x})` };
-  },
-  cSend(v) {
-    const g = v.nz(-4, 9), l = v.nz(-4, 9);
-    return { front: `Incoming ${num(g)}, local ${num(l)}. Passed back?`, back: `<b>${num(g * l)}</b>.`, a: g * l, py: `ans = ${g} * ${l}` };
-  },
-  cMulBack(v) {
-    const a = v.nz(-4, 6), b = v.nz(-4, 6), g = v.nz(-3, 7);
-    return { front: `c = a·b, a = ${num(a)}, b = ${num(b)}, ∂L/∂c = ${num(g)}. Gradients to a and b?`, back: `a: ${term(g)} × ${term(b)} = <b>${num(g * b)}</b>. b: ${term(g)} × ${term(a)} = <b>${num(g * a)}</b>.`, a: [g * b, g * a],
-      py: `ans = [${g} * deriv(lambda a, b: a * b, ${a}, ${b}, wrt=i) for i in (0, 1)]` };
-  },
-  cAddBack(v) {
-    const g = v.nz(-6, 9);
-    return { front: `c = a + b, ∂L/∂c = ${num(g)}. Gradients to a and b?`, back: `<b>${num(g)}</b> and <b>${num(g)}</b>: a sum passes the gradient through unchanged.`, a: [g, g],
-      py: `ans = [${g} * deriv(lambda a, b: a + b, 1.0, 2.0, wrt=i) for i in (0, 1)]` };
-  },
-  cSqLoss(v) {
-    const a = v.int(-3, 8), y = v.int(-3, 6);
-    return { front: `L = (a − y)², a = ${num(a)}, y = ${num(y)}. ∂L/∂a?`, back: `2(a − y) = <b>${num(2 * (a - y))}</b>.`, a: 2 * (a - y), py: `ans = deriv(lambda a: (a - ${y})**2, ${a})` };
-  },
-  cEngineXX(v) {
-    const x = v.nz(-5, 9);
-    return { front: `a = x·x, x = ${num(x)}, L = a. x.grad after backward?`, back: `<b>${num(2 * x)}</b>: ${num(x)} + ${term(x)}, one per input slot.`, a: 2 * x, py: `ans = deriv(lambda x: x * x, ${x})` };
-  },
-  cJac(v) {
-    const n = v.pick([3, 10, 784]), m = v.pick([2, 5, 64]);
-    return { front: `Jacobian of f: ${n} inputs → ${num(m)} outputs. Shape?`, back: `<b>(${num(m)}, ${n})</b>: J[i, j] = ∂yᵢ/∂xⱼ, outputs by inputs.`, a: `(${m}, ${n})`, py: `ans = np.zeros((${m}, ${n})).shape` };
-  },
 };
 
 export default {
@@ -293,8 +241,8 @@ export default {
         { id: 'dv-mean', front: 'What does dy/dx measure?', back: 'How much y changes per small change in x: the local slope.' },
         { id: 'dv-const', front: 'd/dx of a constant?', back: '0.' },
         { id: 'dv-cx', front: 'd/dx of cx? Of x?', back: 'c. And 1.' },
-        { id: 'dv-x2', front: 'd/dx of x² at x = 3?', back: '2x = <b>6</b>.', gen: gen.cSquare },
-        { id: 'dv-nudge', front: 'dy/dx = 4. x moves by 0.01. Δy ≈ ?', back: '<b>0.04</b>.', gen: gen.cNudge },
+        { id: 'dv-x2', front: 'd/dx of x²?', back: '2x.' },
+        { id: 'dv-nudge', front: 'How does dy/dx predict the change in y?', back: 'Δy ≈ (dy/dx) × Δx, for a small change in x.' },
       ],
     },
     {
@@ -316,7 +264,6 @@ export default {
         { id: 'dv-mul', front: '∂(a·b)/∂a?', back: 'b, the other input.' },
         { id: 'dv-trap-sum', front: 'y = b + x. ∂y/∂x?', back: '1, not b.' },
         { id: 'dv-value-local', front: 'Is a parent’s value the same as its local derivative?', back: 'No. For y = a·b, ∂y/∂a is b’s value.' },
-        { id: 'dv-mul-num', front: 'y = a·b, a = 4, b = 7. ∂y/∂a and ∂y/∂b?', back: '<b>7</b> and <b>4</b>.', gen: gen.cMul },
       ],
     },
     {
@@ -334,9 +281,8 @@ export default {
       ],
       cards: [
         { id: 'dv-chain', front: 'Chain rule on one path?', back: 'Multiply the local derivatives: dy/dx = dy/da · da/dx.' },
-        { id: 'dv-chain-num', front: 'a = 2x, y = a², x = 3. dy/dx?', back: '2a · 2 = 12 × 2 = <b>24</b>.', gen: gen.cChain },
+        { id: 'dv-chain-num', front: 'Why do local derivatives multiply along a path?', back: 'Each link scales the change coming from the link before it, so the factors compound.' },
         { id: 'dv-chain-steps', front: 'Order of work for a chain?', back: 'Values forward, then local derivatives, then multiply along the path.' },
-        { id: 'dv-chain-sym', front: 'a = 3x, y = a². dy/dx in terms of x?', back: '2a · 3 = <b>18x</b>.', gen: gen.cChainSym },
       ],
     },
     {
@@ -374,7 +320,6 @@ export default {
       cards: [
         { id: 'dv-rule', front: 'Multiply along paths; …', back: 'add across paths.' },
         { id: 'dv-accumulate', front: 'Accumulate means?', back: 'Add.' },
-        { id: 'dv-branch-num', front: 'a = 2x, b = x², y = a + b, x = 3. dy/dx?', back: '2 + 6 = <b>8</b>.', gen: gen.cBranch },
         { id: 'dv-xx', front: 'y = x·x as a graph: why is dy/dx = 2x?', back: 'Two paths, each contributing x, added.' },
         { id: 'dv-overwrite', front: 'Two paths reach x: overwrite or add?', back: 'Add.' },
       ],
@@ -395,9 +340,8 @@ export default {
       ],
       cards: [
         { id: 'dv-send', front: 'Gradient sent to a parent = ?', back: 'Incoming gradient × local derivative.' },
-        { id: 'dv-send-num', front: 'Incoming 5, local 3. Passed back?', back: '<b>15</b>.', gen: gen.cSend },
-        { id: 'dv-mul-back', front: 'c = a·b, a = 2, b = 3, ∂L/∂c = 5. Gradients to a and b?', back: 'a: 5 × 3 = <b>15</b>. b: 5 × 2 = <b>10</b>.', gen: gen.cMulBack },
-        { id: 'dv-add-back', front: 'c = a + b, ∂L/∂c = 7. Gradients to a and b?', back: '<b>7</b> and <b>7</b>: a sum passes the gradient through unchanged.', gen: gen.cAddBack },
+        { id: 'dv-mul-back', front: 'c = a·b. What gradient does a receive?', back: 'Incoming × local: ∂L/∂c × b.' },
+        { id: 'dv-add-back', front: 'c = a + b. What gradients do a and b receive?', back: 'Both get ∂L/∂c unchanged: a sum’s local derivatives are 1.' },
         { id: 'dv-local-incoming', front: 'Local derivative vs incoming gradient?', back: 'Local: ∂node/∂parent, from this node’s operation. Incoming: ∂L/∂node, from downstream.' },
       ],
     },
@@ -419,7 +363,7 @@ export default {
         { id: 'dv-why-reverse', front: 'Why reverse mode for neural nets?', back: 'One scalar loss, many parameters: one backward pass gives every gradient.' },
         { id: 'dv-forward-mode', front: 'When does forward mode win?', back: 'Few inputs, many outputs.' },
         { id: 'dv-fwd-bwd', front: 'Forward computes …; backward computes …', back: 'Values; sensitivities.' },
-        { id: 'dv-sq-loss', front: 'L = (a − y)², a = 6, y = 4. ∂L/∂a?', back: '2(a − y) = <b>4</b>.', gen: gen.cSqLoss },
+        { id: 'dv-sq-loss', front: 'Local derivative of (a − y)² with respect to a?', back: '2(a − y).' },
       ],
     },
     {
@@ -458,7 +402,7 @@ for node in reversed(order):   # children before parents
         { id: 'dv-plus-eq', front: 'Why grad += rather than = ?', back: 'A node on several paths must add every contribution.' },
         { id: 'dv-topo', front: 'Order of the backward pass?', back: 'Reverse topological: each node after all its children.' },
         { id: 'dv-zero', front: 'Why zero the grads before backward?', back: 'They accumulate, so old values would add in.' },
-        { id: 'dv-engine-xx', front: 'a = x·x, x = 3, L = a. x.grad after backward?', back: '<b>6</b>: 3 + 3, one per input slot.', gen: gen.cEngineXX },
+        { id: 'dv-engine-xx', front: 'In an engine, a = x·x. Why does x.grad end up as 2x?', back: 'The product’s backward rule adds x once for each input slot: x + x.' },
       ],
     },
     {
@@ -494,7 +438,7 @@ for node in reversed(order):   # children before parents
         { t: 'match', q: 'Match each idea to its meaning.', p: [['Jacobian', '(outputs, inputs) table of ∂yᵢ/∂xⱼ'], ['VJP', 'gᵀJ: incoming gradient times Jacobian'], ['y = Wx backward', '∂L/∂x = Wᵀg'], ['Elementwise op', 'Diagonal Jacobian: multiply elementwise']], ex: 'Same rule as the scalar case, incoming × local, with vectors in place of numbers.' },
       ],
       cards: [
-        { id: 'dv-jac', front: 'Jacobian of f: 4 inputs → 3 outputs. Shape?', back: '<b>(3, 4)</b>: J[i, j] = ∂yᵢ/∂xⱼ, outputs by inputs.', gen: gen.cJac },
+        { id: 'dv-jac', front: 'Jacobian of f: n inputs → m outputs. Shape?', back: '(m, n): J[i, j] = ∂yᵢ/∂xⱼ, outputs by inputs.' },
         { id: 'dv-jac-linear', front: 'Jacobian of y = Wx?', back: 'W.' },
         { id: 'dv-vjp', front: 'In vector backprop, what does a node send back?', back: 'gᵀJ, the vector-Jacobian product, shaped like its input.' },
         { id: 'dv-wtg', front: 'y = Wx, incoming g. ∂L/∂x?', back: 'Wᵀg.' },
