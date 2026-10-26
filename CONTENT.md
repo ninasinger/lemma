@@ -7,7 +7,7 @@ export default {
   id: 'mx',                 // permanent
   title: 'Matrices',
   sub: 'One-line promise shown on the unit banner.',
-  c: 'mx',                  // color token: mx, dv, pca, svd, gen, l2, wd, dr or gold (add new ones in app.css)
+  c: 'mx',                  // color token: mx, dv, opt, pca, svd, gen, l2, wd, dr or gold (add new ones in app.css)
   guide: `…HTML…`,          // the Guidebook cheat sheet
   lessons: [
     { id: 'mx-1', title: 'Dot products', steps: [ … ], cards: [ … ] },

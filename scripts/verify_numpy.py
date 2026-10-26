@@ -306,6 +306,19 @@ check(np.isclose(-1 * deriv(lambda x: 2 * (2 * x) ** 2 - x, 3), -47), "ad-4 inco
 check(np.isclose(deriv(lambda x: (2 * x + 1) ** 2, 1), 12) and np.isclose(2 * deriv(lambda x: 2 * x + x**2, 3), 16), "ad-3 chain and branch drills")
 check(np.isclose(4 * deriv(lambda a, b: a * b, -3, 2, wrt=1), -12) and np.isclose(3 * deriv(lambda x: x**2, -2), -12), "ad-2 drills")
 
+# ---------- Optimization ----------
+ws = np.linspace(-10, 10, 200001)
+check(np.isclose(ws[np.argmin(2 * (ws - 3) ** 2 + 1)], 3) and np.isclose((( ws + 2) ** 2 + 5).min(), 5), "opt-1 convex minima")
+cubic = lambda w: w**3 - 3 * w
+check(np.isclose(deriv(cubic, 1), 0) and np.isclose(deriv(cubic, -1), 0) and cubic(1) < cubic(1.1) and cubic(1) < cubic(0.9) and cubic(-1) > cubic(-1.1) and cubic(-1) > cubic(-0.9), "opt-1 w^3 - 3w: min at 1, max at -1")
+check(np.isclose(2 - 0.1 * 4, 1.6) and np.isclose(5 - 0.1 * deriv(lambda w: (w - 3) ** 2, 5), 4.6) and np.isclose(-1 - 0.05 * -6, -0.7), "opt-2 gradient-descent steps")
+import itertools
+gs = [4, -2, 6, 0]
+check(np.mean(gs) == 2 and np.mean([gs[0], gs[2]]) == 5 and np.isclose(np.mean([np.mean(b) for b in itertools.combinations(gs, 2)]), np.mean(gs)), "opt-3 mini-batch gradient is unbiased")
+check(32000 / 32 == 1000 and len(range(0, 32000, 1024)) == 32 and np.isclose(32000 / 1024, 31.25) and 256 / 32 == 8, "opt-4 updates per epoch")
+check(abs(rng.normal(0, 2, size=(40000, 16)).mean(axis=1).std() - 0.5) < 0.02, "opt-4 batch noise shrinks like sigma/sqrt(B)")
+check((0**2 - 1**2) == -1 and np.isclose(deriv(lambda x, y: x**2 - y**2, 1, 2, wrt=1), -4) and np.allclose([deriv(lambda x, y: x**2 - y**2, 0.0, 0.0, wrt=i) for i in (0, 1)], 0), "opt-5 saddle")
+
 # ---------- Generated questions and cards ----------
 # Questions and flashcards with fresh numbers carry a Python twin of each answer. Run a seeded
 # sample of every generator through NumPy and compare with the answer the app would accept.
