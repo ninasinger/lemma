@@ -2,7 +2,7 @@
 :root{
   --bg:#F4F6FA; --surface:#FFFFFF; --ink:#1A2130; --muted:#5D6678; --line:#E1E5EE; --line-d:#C7CEDB; --axis:#BCC4D3; --grid:rgba(45,80,150,.055); --grid-line:#ECEFF5;
   --pca:#0E9F70; --pca-d:#09754F; --svd:#2D6BE6; --svd-d:#1C4BAA; --l2:#7848D6; --l2-d:#552EA4; --wd:#C46A04; --wd-d:#8C4C03; --dr:#D93D66; --dr-d:#A22648; --gold:#D99A00; --gold-d:#A47400;
-  --mx:#3A4A66; --mx-d:#232F47; --gen:#0F7C8C; --gen-d:#0A5863; --dv:#6B7A0E; --dv-d:#4A5508; --opt:#A2309A; --opt-d:#741F6E; --ops:#B83A26; --ops-d:#86291A; --k0:#DCE7FD; --k1:#FCE6CC; --k2:#FBDDE5; --k3:#D5F2E6;
+  --mx:#3A4A66; --mx-d:#232F47; --gen:#0F7C8C; --gen-d:#0A5863; --dv:#6B7A0E; --dv-d:#4A5508; --opt:#A2309A; --opt-d:#741F6E; --ops:#B83A26; --ops-d:#86291A; --bp:#8A5A2B; --bp-d:#633F1D; --k0:#DCE7FD; --k1:#FCE6CC; --k2:#FBDDE5; --k3:#D5F2E6;
   --code-bg:#F3F5FA; --cc:#0B7552; --cs:#B4530A; --ck:#6A38C8; --cn:#1C4BAA;
   --ok:#2E9B3B; --ok-d:#1F7029; --ok-bg:#E2F5E4; --bad:#D33A3A; --bad-d:#9E2525; --bad-bg:#FCE7E7;
   --on-accent:#FFFFFF; --heart:#E5484D; --flame:#EF7615; --bolt:#D99A00;
@@ -13,14 +13,14 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0F131A; --surface:#171D27; --ink:#E8ECF4; --muted:#98A2B5; --line:#283041; --line-d:#1C2230; --axis:#3A4458; --grid:rgba(150,180,255,.045); --grid-line:#212938;
-  --pca:#2FC793; --pca-d:#1B8C66; --svd:#5E91FF; --svd-d:#3965C2; --l2:#A47DFF; --l2-d:#7652CA; --wd:#FFA63A; --wd-d:#BF771C; --dr:#FF6E92; --dr-d:#C4486A; --gold:#FFC83A; --gold-d:#C3961C; --mx:#A9BADB; --mx-d:#6B7CA0; --gen:#3FC6D6; --gen-d:#22909C; --dv:#BCD046; --dv-d:#8A9A24; --opt:#E57FDA; --opt-d:#B055A6; --ops:#FF8C70; --ops-d:#C85C44; --k0:#1E2F55; --k1:#4A3216; --k2:#4A1F2C; --k3:#173D30;
+  --pca:#2FC793; --pca-d:#1B8C66; --svd:#5E91FF; --svd-d:#3965C2; --l2:#A47DFF; --l2-d:#7652CA; --wd:#FFA63A; --wd-d:#BF771C; --dr:#FF6E92; --dr-d:#C4486A; --gold:#FFC83A; --gold-d:#C3961C; --mx:#A9BADB; --mx-d:#6B7CA0; --gen:#3FC6D6; --gen-d:#22909C; --dv:#BCD046; --dv-d:#8A9A24; --opt:#E57FDA; --opt-d:#B055A6; --ops:#FF8C70; --ops-d:#C85C44; --bp:#D9A46B; --bp-d:#A87840; --k0:#1E2F55; --k1:#4A3216; --k2:#4A1F2C; --k3:#173D30;
   --code-bg:#11161F; --cc:#62D6A9; --cs:#FFB86B; --ck:#C6A8FF; --cn:#8FB4FF;
   --ok:#4CC75A; --ok-d:#2F8E3B; --ok-bg:#15301B; --bad:#FF6B6B; --bad-d:#BE4545; --bad-bg:#361A1D;
   --on-accent:#0E1219; --heart:#FF6B70; --flame:#FF9440; --bolt:#FFC83A; color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --bg:#0F131A; --surface:#171D27; --ink:#E8ECF4; --muted:#98A2B5; --line:#283041; --line-d:#1C2230; --axis:#3A4458; --grid:rgba(150,180,255,.045); --grid-line:#212938;
-  --pca:#2FC793; --pca-d:#1B8C66; --svd:#5E91FF; --svd-d:#3965C2; --l2:#A47DFF; --l2-d:#7652CA; --wd:#FFA63A; --wd-d:#BF771C; --dr:#FF6E92; --dr-d:#C4486A; --gold:#FFC83A; --gold-d:#C3961C; --mx:#A9BADB; --mx-d:#6B7CA0; --gen:#3FC6D6; --gen-d:#22909C; --dv:#BCD046; --dv-d:#8A9A24; --opt:#E57FDA; --opt-d:#B055A6; --ops:#FF8C70; --ops-d:#C85C44; --k0:#1E2F55; --k1:#4A3216; --k2:#4A1F2C; --k3:#173D30;
+  --pca:#2FC793; --pca-d:#1B8C66; --svd:#5E91FF; --svd-d:#3965C2; --l2:#A47DFF; --l2-d:#7652CA; --wd:#FFA63A; --wd-d:#BF771C; --dr:#FF6E92; --dr-d:#C4486A; --gold:#FFC83A; --gold-d:#C3961C; --mx:#A9BADB; --mx-d:#6B7CA0; --gen:#3FC6D6; --gen-d:#22909C; --dv:#BCD046; --dv-d:#8A9A24; --opt:#E57FDA; --opt-d:#B055A6; --ops:#FF8C70; --ops-d:#C85C44; --bp:#D9A46B; --bp-d:#A87840; --k0:#1E2F55; --k1:#4A3216; --k2:#4A1F2C; --k3:#173D30;
   --code-bg:#11161F; --cc:#62D6A9; --cs:#FFB86B; --ck:#C6A8FF; --cn:#8FB4FF;
   --ok:#4CC75A; --ok-d:#2F8E3B; --ok-bg:#15301B; --bad:#FF6B6B; --bad-d:#BE4545; --bad-bg:#361A1D;
   --on-accent:#0E1219; --heart:#FF6B70; --flame:#FF9440; --bolt:#FFC83A; color-scheme:dark;
@@ -122,6 +122,18 @@ button:disabled{cursor:default}
 .m{font-family:var(--f-mono);font-size:.86em;font-weight:500;background:color-mix(in srgb,var(--uc) 11%,var(--surface));padding:1px 6px;border-radius:6px}
 .eq{font:700 16px/1.4 var(--f-mono);background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:12px 16px;margin:4px 0 12px;overflow-x:auto;white-space:nowrap;color:var(--ink)}
 .eq.hook{white-space:normal}
+.fig{margin:2px 0 14px}
+.cg{display:block;width:100%;max-width:440px;height:auto;font-family:var(--f-mono)}
+.cg text{text-anchor:middle;fill:var(--ink);font-size:11.5px;font-weight:600}
+.cg .t{font-size:12.5px;font-weight:800}
+.cg .g{fill:var(--muted)}
+.cg .e{stroke:var(--muted);stroke-width:2}
+.cg .ah{fill:var(--muted)}
+.cg .nd rect{fill:var(--surface);stroke:var(--line);stroke-width:2}
+.cg .done rect{stroke:var(--ok)}
+.cg .done .g{fill:var(--ok)}
+.cg .cur rect{stroke:var(--uc);stroke-width:3;fill:color-mix(in srgb,var(--uc) 14%,var(--surface))}
+.cg .cur .g{fill:var(--uc);font-weight:800}
 .eq.small{font-size:14px;margin:0;padding:9px 12px;background:var(--bg)}
 .opts{display:grid;gap:10px}
 .opts.tf{grid-template-columns:1fr 1fr}

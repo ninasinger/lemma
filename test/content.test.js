@@ -91,10 +91,10 @@ test('questions and cards with a generator draw different numbers each time', ()
   assert.ok(items.length >= 100, `only ${items.length} items vary`);
   for (const item of items) {
     const shown = SEEDS.map((seed) => vary(item, rng(seed)));
-    const texts = shown.map((x) => [x.q, x.code, x.front].join('|'));
+    const texts = shown.map((x) => [x.q, x.code, x.fig, x.front].join('|'));
     assert.ok(new Set(texts).size >= 3, `${item.id ?? item.q}: only ${new Set(texts).size} different versions in ${SEEDS.length} draws`);
     for (const x of shown) {
-      const text = [x.q, x.code, x.ex, x.front, x.back].filter(Boolean).join(' ');
+      const text = [x.q, x.code, x.fig, x.ex, x.front, x.back].filter(Boolean).join(' ');
       assert.doesNotMatch(text, /undefined|NaN|Infinity|\[object/, `${item.id ?? item.q}: ${text}`);
       assert.equal(x.t, item.t, 'a generator never changes the step type');
       assert.ok(x.py === undefined || /\bans\s*=/.test(x.py), `${item.id ?? item.q}: py must set ans`);

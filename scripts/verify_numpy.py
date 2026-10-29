@@ -326,6 +326,21 @@ check(2 < half / 1.5 and 8 > 1.5 * half, "ops-4 a 2-point drop is noise-sized, a
 need = next(n for n in range(1, 10000) if 1.96 * np.sqrt(0.9 * 0.1 / n) <= 0.02)
 check(need == 865, "ops-4 examples for a +/-2-point interval")
 
+# ---------- Autodiff & Adam ----------
+neuron_L = lambda x, w, b: (x * w + b) ** 2
+check([round(deriv(neuron_L, 2, 3, 1, wrt=i), 9) for i in range(3)] == [42, 28, 14], "bp-2 neuron walk: x, w, b gradients")
+merge_L = lambda x: 2 * (3 * x + x**2)
+check(np.isclose(deriv(merge_L, 2), 14) and np.isclose(deriv(lambda x: 2 * (3 * x + 2**2), 2), 6), "bp-3 merge: 6 + 8 accumulate to 14")
+g_acc = 0.0
+for gb in [4, -2, 6, 0]:
+    g_acc += gb / 4
+check(np.isclose(g_acc, 2) and 3 + 5 == 8 and 8 * 4 == 32, "bp-4 accumulation and stale grads")
+v_mom = 0.9 * 2 + 1
+check(np.isclose(v_mom, 2.8) and np.isclose(1 - 0.1 * v_mom, 0.72) and np.isclose(1 - 1.25 * deriv(lambda w: w**2, 1.0), -1.5), "bp-5 momentum and learning-rate steps")
+m1, s1 = 0.1 * 0.004, 0.001 * 0.004**2
+check(np.isclose(0.9 * 0.5 + 0.1 * 2, 0.65) and np.isclose(0.999 * 0.5 + 0.001 * 4, 0.5035) and np.isclose(-0.01 * (m1 / 0.1) / np.sqrt(s1 / 0.001), -0.01), "bp-6 Adam moments and first step")
+check(7e9 * 8 / 1e9 == 56 and 7e9 * 16 / 1e9 == 112, "bp-6 Adam memory")
+
 # ---------- Generated questions and cards ----------
 # Questions and flashcards with fresh numbers carry a Python twin of each answer. Run a seeded
 # sample of every generator through NumPy and compare with the answer the app would accept.

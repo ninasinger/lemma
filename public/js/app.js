@@ -1,4 +1,4 @@
-import { $, $$, reduced, shuffle, esc, rich, highlight, onDispose, disposeAll, sameShape, ICON, mascot, sound, sfx } from './util.js';
+import { $, $$, reduced, shuffle, esc, rich, highlight, onDispose, disposeAll, sameShape, ICON, mascot, sound, sfx, rng } from './util.js';
 import { W } from './widgets.js';
 import { schedule, preview, formatInterval, dayStart, DAY, MINUTE } from './srs.js';
 import { UNITS } from './content/index.js';
@@ -168,11 +168,11 @@ function resetBar(id){const pb=$(id);pb.style.transition='none';pb.style.width='
 function startLesson(u,l){
   disposeAll();closeGuide();
   const steps=l.steps||buildMixedQuiz();
-  LS={u,l,q:steps.slice(),i:0,hearts:5,total:steps.length,done:0,qs:steps.filter(s=>s.t!=='learn').length,wrong:new Set(),phase:'answer',ctrl:null,cur:null};
+  LS={u,l,q:steps.slice(),i:0,hearts:5,total:steps.length,done:0,qs:steps.filter(s=>s.t!=='learn').length,wrong:new Set(),phase:'answer',ctrl:null,cur:null,seed:Math.floor(Math.random()*2**31)};
   $('#lesson').style.cssText=`--uc:var(--${u.c});--ucd:var(--${u.c}-d)`;
   resetBar('#pbar');show('lesson');renderStep();
 }
-const head=s=>`<h2 class="qh">${rich(s.q??s.title)}</h2>${s.code?`<pre class="py">${esc(s.code)}</pre>`:''}`;
+const head=s=>`<h2 class="qh">${rich(s.q??s.title)}</h2>${s.fig?`<div class="fig">${s.fig}</div>`:''}${s.code?`<pre class="py">${esc(s.code)}</pre>`:''}`;
 const RENDER={
   learn(w,s){w.insertAdjacentHTML('beforeend',`<h2 class="qh">${rich(s.title)}</h2><div class="prose">${rich(s.body)}</div>`);if(s.w){const b=document.createElement('div');w.appendChild(b);W[s.w](b,s.wo||{})}setMain('Continue',true);return{}},
   task(w,s){w.insertAdjacentHTML('beforeend',`<h2 class="qh">${rich(s.title)}</h2><div class="prose">${rich(s.body)}</div>`);const b=document.createElement('div');w.appendChild(b);const h=W[s.w](b,s.wo||{});setMain('Check',true);return{check:()=>({ok:h.solved()})}},
@@ -234,7 +234,8 @@ const kicker=s=>s.t==='explain'?`${KIND[s.kind]} · say it or write it`:KICK[s.t
 function renderStep(){
   disposeAll();
   // vary() draws fresh numbers each time, so a missed question comes back as a new instance.
-  const s=LS.cur=vary(LS.q[LS.i]),stg=$('#stage');stg.innerHTML='';LS.phase='answer';LS.ctrl=null;setBar('idle');updateTop();
+  // Steps marked walk share one seed on the first pass, so a step-by-step walk keeps the same graph.
+  const t=LS.q[LS.i],s=LS.cur=vary(t,t.walk&&LS.i<LS.total?rng(LS.seed):Math.random),stg=$('#stage');stg.innerHTML='';LS.phase='answer';LS.ctrl=null;setBar('idle');updateTop();
   const w=document.createElement('div');w.className='step';w.innerHTML=`<p class="kicker">${LS.i>=LS.total?'Missed earlier · ':''}${kicker(s)}</p>`;stg.appendChild(w);
   LS.ctrl=RENDER[s.t](w,s);highlight(w);window.scrollTo(0,0);
 }

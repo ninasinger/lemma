@@ -7,7 +7,7 @@ export default {
   id: 'mx',                 // permanent
   title: 'Matrices',
   sub: 'One-line promise shown on the unit banner.',
-  c: 'mx',                  // color token: mx, dv, opt, ops, pca, svd, gen, l2, wd, dr or gold (add new ones in app.css)
+  c: 'mx',                  // color token: mx, dv, opt, bp, ops, pca, svd, gen, l2, wd, dr or gold (add new ones in app.css)
   guide: `…HTML…`,          // the Guidebook cheat sheet
   lessons: [
     { id: 'mx-1', title: 'Dot products', steps: [ … ], cards: [ … ] },
@@ -30,7 +30,7 @@ export default {
 | `match` | `q`, `p` (pairs), `ex` | Tap-to-match pairs. |
 | `explain` | `kind`, `q`, `model`, `rubric`, optional `secs` | Open-ended interview practice. The learner answers (typed or out loud) with a timer, then sees the model answer and ticks the rubric points they covered. Under 60% coverage counts as a miss for accuracy; no hearts are lost. |
 
-Any step can also carry `code`, which is shown as a highlighted Python block under the question.
+Any step can also carry `code`, which is shown as a highlighted Python block under the question, and `fig`, an HTML figure (such as the inline SVG computation graphs in `backprop.js`) shown between the question and the code. Steps marked `walk: true` share one random seed on a lesson’s first pass, so a node-by-node walk keeps the same numbers from step to step; a missed walk step comes back with fresh numbers, so its figure must show everything the question needs.
 
 ## Passing a lesson
 
