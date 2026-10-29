@@ -63,11 +63,11 @@ w = np.linalg.solve(X.T @ X + lam * np.eye(d), X.T @ y)</pre>`,
   {t:'num',q:`Weights w = (3, −4) and λ = 0.1. What is the penalty λ‖w‖²?`,a:2.5,tol:.001,ex:`‖w‖² = 9 + 16 = 25, and 0.1 × 25 = 2.5.`,gen:gen.penalty}
  ],
  cards:[
-  { id: 'l2-loss', front: `Write the loss with L2 regularization.`, back: `data loss + λ‖w‖², where ‖w‖² = Σⱼ wⱼ².` },
-  { id: 'l2-lambda', front: `What happens when λ is too small, and too large?`, back: `Too small: overfits, wiggling through the noise. Too large: underfits, with weights shrunk toward 0 and a model that’s too flat.` },
-  { id: 'l2-vs-l1', front: `Does L2 regularization make weights exactly zero?`, back: `Rarely. It shrinks them smoothly. L1 (the lasso) is what produces exact zeros.` },
-  { id: 'l2-select', front: `How do you choose λ in practice?`, back: `On held-out validation data or by cross-validation. Touch the test set once, at the very end. (The widget’s “true error” is an oracle you never have.)` },
-  { id: 'l2-bias', front: `Is the bias usually included in the L2 penalty?`, back: `No. Shifting every prediction up or down doesn’t make the model any wigglier.` },
+  { id: 'l2-loss', front: 'What does L2 regularization penalize?', back: 'Large weights.' },
+  { id: 'l2-lambda', front: 'What happens when the L2 penalty is too strong?', back: 'The model underfits.' },
+  { id: 'l2-vs-l1', front: 'Does L2 make weights exactly zero?', back: 'Rarely: L1 does that.' },
+  { id: 'l2-select', front: 'How do you choose the penalty strength?', back: 'On validation data, never the test set.' },
+  { id: 'l2-bias', front: 'Is the bias term usually penalized?', back: 'No.' },
  ]},
  {id:'l2-2',title:'The geometry of ridge',steps:[
   {t:'learn',title:'Pulled toward the origin',body:`<p>The gray ellipses are contours of the data loss, centered on the unpenalized best fit <span class="m">w*</span>. The dashed circle is a contour of the penalty.</p><p>As λ grows, the solution slides from <span class="m">w*</span> toward 0, always sitting where an ellipse just touches a circle. Watch which direction gives way first.</p>`,w:'contour'},
@@ -78,10 +78,10 @@ w = np.linalg.solve(X.T @ X + lam * np.eye(d), X.T @ y)</pre>`,
   {t:'tf',q:`The bias (intercept) is usually left out of the L2 penalty.`,a:true,ex:`Shifting every prediction up or down doesn’t make the function any wigglier, so penalizing it only adds bias. The polynomial demo left the constant term unpenalized.`}
  ],
  cards:[
-  { id: 'l2-grad', front: `What is the gradient of λ‖w‖²?`, back: `2λw. Written as (λ/2)‖w‖², it’s just λw.` },
-  { id: 'l2-closed', front: `Ridge regression in closed form?`, back: `w = (XᵀX + λI)⁻¹ Xᵀy.` },
-  { id: 'l2-shrink', front: `How much does ridge shrink the component along singular direction i?`, back: `By the factor σᵢ² / (σᵢ² + λ). Well-determined (large-σ) directions barely change; poorly determined ones get crushed. Large σ means X varies there, not that it predicts y.` },
-  { id: 'l2-geo', front: `Which directions does ridge shrink the most?`, back: `Where the loss is flat (small singular values): the data gives little evidence there, so the penalty wins.` },
+  { id: 'l2-grad', front: 'Which way does the L2 penalty push each weight?', back: 'Toward zero, harder for bigger weights.' },
+  { id: 'l2-closed', front: 'Does ridge regression have a closed-form solution?', back: 'Yes.' },
+  { id: 'l2-shrink', front: 'Does ridge shrink well-determined directions much?', back: 'Barely.' },
+  { id: 'l2-geo', front: 'Which directions does ridge shrink most?', back: 'The ones the data says little about.' },
  ]},
  {id:'l2-3',title:'Ridge in NumPy',steps:[
   {t:'learn',title:'Loss and gradient, with shapes',body:`<pre class="py">X.shape, y.shape            # (n, d), (n,)
@@ -112,14 +112,9 @@ w = np.linalg.lstsq(A, b, rcond=None)[0]       # same ridge solution, no X.T @ X
   {t:'explain',kind:'derive',secs:90,q:'Derive the ridge solution from the objective ‖Xw − y‖² + λ‖w‖².',model:`<p>Take the gradient with respect to w and set it to zero:</p><div class="eq">2Xᵀ(Xw − y) + 2λw = 0  ⇒  (XᵀX + λI) w = Xᵀy</div><p>For λ &gt; 0, XᵀX + λI is positive definite (every eigenvalue is at least λ), so the objective is strictly convex and this w is its unique minimizer:</p><div class="eq">w = (XᵀX + λI)⁻¹ Xᵀy</div><p>In code, solve the system rather than forming the inverse. The same objective also comes from a Gaussian prior on w (MAP estimation), which the likelihood unit will cover.</p>`,rubric:['Differentiates both terms correctly: 2Xᵀ(Xw − y) and 2λw','Sets the gradient to zero and rearranges to (XᵀX + λI)w = Xᵀy','Argues uniqueness: XᵀX + λI is positive definite for λ &gt; 0','Notes to solve the system rather than invert']}
  ],
  cards:[
-  { id: 'l2-np-shapes', front: `Shapes in linear regression: X, y, w and <code>X @ w</code>?`, back: `X (n, d), y (n,), w (d,), <code>X @ w</code> (n,).` },
-  { id: 'l2-np-grad', front: `Gradient of ‖Xw − y‖² + λ‖w‖² in NumPy, and its shape?`, back: `<code>2 * X.T @ (X @ w - y) + 2 * lam * w</code>, shape (d,), same as w.` },
-  { id: 'l2-np-solve', front: `The ridge solution in one NumPy call?`, back: `<code>np.linalg.solve(X.T @ X + lam * np.eye(d), X.T @ y)</code>` },
-  { id: 'l2-np-xt', front: `Why does <code>X.T</code> appear in the gradient?`, back: `It maps n residuals back to d weights: (d, n) @ (n,) → (d,). Entry j sums residual × feature j over all samples.` },
-  { id: 'l2-np-units', front: `Why standardize features before ridge?`, back: `The penalty acts on coefficients, whose size depends on each feature’s units. Without standardizing, one λ penalizes features unevenly.` },
-  { id: 'l2-np-mean', front: `Loss Σr² + λ_A‖w‖² vs (1/n)Σr² + λ_B‖w‖²: how do the λs relate?`, back: `λ_A = n·λ_B. Whether the data term is summed or averaged changes what a given λ means.` },
-  { id: 'l2-np-aug', front: `How do you solve ridge without forming XᵀX?`, back: `Least squares on the augmented system [X; √λ·I] w ≈ [y; 0], e.g. with <code>np.linalg.lstsq</code>.` },
-  { id: 'l2-derive-closed', front: 'Why does ridge always have a unique solution?', back: 'XᵀX + λI is positive definite for λ > 0, so it’s invertible even when XᵀX isn’t (more features than samples, or collinear features).' },
-  { id: 'l2-np-solve-why', front: `Why <code>np.linalg.solve(A, b)</code> rather than <code>inv(A) @ b</code>?`, back: `It’s faster and more accurate, and never forms the inverse.` },
+  { id: 'l2-np-units', front: 'Why standardize features before ridge?', back: 'So one penalty treats every feature fairly.' },
+  { id: 'l2-np-mean', front: 'Does averaging instead of summing the loss change what a penalty strength means?', back: 'Yes: the same number gives a different strength.' },
+  { id: 'l2-derive-closed', front: 'Does ridge always have a unique solution?', back: 'Yes, for any positive penalty.' },
+  { id: 'l2-np-solve-why', front: 'Why solve a linear system instead of inverting the matrix?', back: 'It’s faster and more accurate.' },
  ]}
 ]};

@@ -88,9 +88,9 @@ Short recall builds memory; interviews test whether you can produce and defend a
 
 ## Flashcards
 
-Every lesson should end with 3–6 cards: `{ id, front, back }`, both HTML. Cards are **context review**: concepts, rules, shapes and judgments, never arithmetic or derivations. Number drills belong in the lesson, where they get fresh numbers; `npm test` fails if a card has a `gen`. A card is unlocked when its lesson is finished, then scheduled with Anki's SM-2 rules (`public/js/srs.js`). Good cards ask one thing, have a short answer, and include at least one about **shapes** whenever code is involved.
+Every lesson should end with 3–6 cards: `{ id, front, back }`. A card is unlocked when its lesson is finished, then scheduled with Anki's SM-2 rules (`public/js/srs.js`).
 
-A card can also be an interview card: add `kind`, `rubric` (3–5 points) and optionally `secs`. In review it shows an answer box and a timer, and after the reveal the rubric; the share of points ticked suggests a grade (under 50% Again, under 80% Hard, otherwise Good).
+Cards are **simple conceptual recall of one idea**: a short question and a one-line answer (“What does cosine similarity compare?” → “Direction only, ignoring length.”). No lists, formulas, shape arithmetic, code or number drills. Those belong in the lesson, where number drills get fresh numbers and interview prompts are `explain` steps. `npm test` enforces this: no `gen`, `kind` or `rubric` on cards, both sides at most 90 characters, no formula symbols or code, and at most two commas in an answer.
 
 ## Checking your work
 

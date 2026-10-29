@@ -155,10 +155,10 @@ export default {
         { t: 'num', q: 'x = 2, a = 2x, b = a², c = 4b, y = c + 3x. What is ∂y/∂x?', a: 67, tol: 0, ex: 'Indirect 64 plus direct 3: 67.', gen: gen.total },
       ],
       cards: [
-        { id: 'ad-checklist', front: 'The five-step checklist?', back: 'Write the paths. Compute values. One local derivative per edge. Multiply along each path. Add across paths.' },
-        { id: 'ad-example', front: 'x reaches y directly and through a chain. How do you get ∂y/∂x?', back: 'Multiply the edge derivatives along the chain, then add the direct edge.' },
-        { id: 'ad-value-local', front: 'b = a². Is b’s value the same as ∂b/∂a?', back: 'No: the value is a²; the local derivative is 2a.' },
-        { id: 'ad-miss-indirect', front: 'Answer came out as just the direct edge. What was missed?', back: 'The indirect path.' },
+        { id: 'ad-checklist', front: 'What is the first step of the backprop checklist?', back: 'Write out every path from input to output.' },
+        { id: 'ad-example', front: 'x reaches y directly and through a chain. What do you do with the two contributions?', back: 'Add them.' },
+        { id: 'ad-value-local', front: 'What goes wrong if you use a node’s value as its derivative?', back: 'You multiply by the wrong number on that edge.' },
+        { id: 'ad-miss-indirect', front: 'Your answer is only the direct edge. What did you miss?', back: 'The indirect path.' },
       ],
     },
     {
@@ -176,9 +176,9 @@ export default {
         { t: 'num', q: 'c = x² with x = −2, and ∂L/∂c = 3. What gradient is sent to x?', a: -12, tol: 0, ex: 'Local dc/dx = 2x = −4. Incoming × local: 3 × (−4) = −12.', gen: gen.local },
       ],
       cards: [
-        { id: 'ad-incoming', front: 'The incoming gradient isn’t 1. What do you do?', back: 'Multiply it in: incoming × local.' },
-        { id: 'ad-local-drill', front: 'Where does a node’s incoming gradient come from?', back: 'From downstream: ∂L/∂node, built by everything between the node and the loss.' },
-        { id: 'ad-local-rules', front: 'Local derivatives of a + b, a·b, x², k·a?', back: '1 and 1; b and a; 2x; k.' },
+        { id: 'ad-incoming', front: 'The incoming gradient isn’t 1. What do you do?', back: 'Multiply it in.' },
+        { id: 'ad-local-drill', front: 'Where does a node’s incoming gradient come from?', back: 'Everything between the node and the loss.' },
+        { id: 'ad-local-rules', front: 'What does a scaling node, k times a, send back?', back: 'The incoming gradient times k.' },
       ],
     },
     {
@@ -196,8 +196,8 @@ export default {
         { t: 'mc', q: '“Accumulate gradients” means…', o: ['Add each path’s contribution into the total', 'Keep the most recent contribution', 'Multiply the contributions', 'Average them'], ex: 'Every path carries part of the change, so the contributions add. Overwriting would drop a path.' },
       ],
       cards: [
-        { id: 'ad-skip', front: 'Why not skip an intermediate node?', back: 'Each edge has its own local derivative; skipping a node uses the wrong one.' },
-        { id: 'ad-accumulate', front: '“Accumulate gradients” means?', back: 'Add the contributions.' },
+        { id: 'ad-skip', front: 'Why not skip an intermediate node?', back: 'You’d use the wrong local derivative.' },
+        { id: 'ad-accumulate', front: 'What does “accumulate gradients” mean?', back: 'Add the contributions.' },
         { id: 'ad-indirect', front: 'Can x affect y without being y’s parent?', back: 'Yes, through any path.' },
       ],
     },
@@ -215,10 +215,10 @@ export default {
         { t: 'mc', q: 'A network has one scalar loss and millions of parameters. Which mode gives every gradient in one backward pass?', o: ['Reverse mode', 'Forward mode', 'Either: they cost the same', 'Neither'], ex: 'One scalar loss, many parameters → reverse mode: one backward pass from ∂L/∂L = 1 reaches every parameter.' },
       ],
       cards: [
-        { id: 'ad-hooks', front: 'The four memory hooks?', back: 'Incoming × local. Multiply along paths; add across. Forward = values, backward = sensitivities. One scalar loss, many parameters → reverse mode.' },
-        { id: 'ad-full', front: 'Why compute every node’s value before any derivative?', back: 'Local derivatives use the values: ∂b/∂a = 2a needs a.' },
-        { id: 'ad-full-incoming', front: 'y feeds the loss with ∂L/∂y ≠ 1. How does that change ∂L/∂x?', back: 'Multiply the whole ∂y/∂x by ∂L/∂y.' },
-        { id: 'ad-reverse', front: 'One scalar loss, many parameters → ?', back: 'Reverse mode.' },
+        { id: 'ad-hooks', front: 'Which pass computes values: forward or backward?', back: 'The forward pass.' },
+        { id: 'ad-full', front: 'Why compute values before derivatives?', back: 'Local derivatives need the values.' },
+        { id: 'ad-full-incoming', front: 'A non-1 incoming gradient at the output scales what?', back: 'Every gradient below it.' },
+        { id: 'ad-reverse', front: 'One scalar loss and many parameters: which mode?', back: 'Reverse mode.' },
       ],
     },
   ],

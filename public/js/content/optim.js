@@ -146,10 +146,10 @@ export default {
       ],
       cards: [
         { id: 'opt-convex-local', front: 'What does convexity guarantee about local minima?', back: 'Every local minimum is global.' },
-        { id: 'opt-convex-grad', front: 'Differentiable convex L: what does ∇L = 0 imply?', back: 'A global minimum.' },
-        { id: 'opt-nonconvex-grad', front: 'Non-convex L: what can ∇L = 0 mean?', back: 'Local minimum, local maximum, or saddle point.' },
-        { id: 'opt-strict', front: 'Convex vs strictly convex minima?', back: 'Convex: possibly several, all equal. Strictly convex: exactly one.' },
-        { id: 'opt-nn-nonconvex', front: 'Why are neural-network losses non-convex?', back: 'Parameters interact through compositions of nonlinear transformations.' },
+        { id: 'opt-convex-grad', front: 'On a convex loss, what does zero slope mean?', back: 'You’re at a global minimum.' },
+        { id: 'opt-nonconvex-grad', front: 'On a non-convex loss, what does zero slope mean?', back: 'Only that the point is stationary, not that it’s a minimum.' },
+        { id: 'opt-strict', front: 'How many minima can a strictly convex function have?', back: 'Exactly one.' },
+        { id: 'opt-nn-nonconvex', front: 'Why are neural-network losses non-convex?', back: 'Parameters interact through stacked nonlinear layers.' },
       ],
     },
     {
@@ -166,9 +166,9 @@ export default {
         { t: 'num', q: 'w = −1, ∇L(w) = −6, η = 0.05. What is w after one gradient-descent step?', a: -0.7, tol: 0.001, ex: 'w − η∇L = −1 − 0.05 × (−6) = −0.7. The gradient is negative, so w moves up: downhill.', gen: gen.gdGiven },
       ],
       cards: [
-        { id: 'opt-gd-update', front: 'The gradient-descent update?', back: 'w ← w − η∇L(w).' },
-        { id: 'opt-uphill', front: 'Which way does the gradient point?', back: 'Uphill. Step along the negative gradient.' },
-        { id: 'opt-minibatch', front: 'Full-batch GD vs mini-batch SGD?', back: 'Whole training set per update vs a random subset: cheaper updates, many more of them.' },
+        { id: 'opt-gd-update', front: 'What does one gradient-descent step do?', back: 'Moves the weights a little way downhill.' },
+        { id: 'opt-uphill', front: 'Which way does the gradient point?', back: 'Uphill.' },
+        { id: 'opt-minibatch', front: 'What does mini-batch SGD use for each update?', back: 'A random subset of the training data.' },
       ],
     },
     {
@@ -186,10 +186,10 @@ export default {
         { t: 'mc', q: 'Why shuffle the training data each epoch?', o: ['So the dataset’s order can’t keep producing correlated or unrepresentative batches', 'To make every batch identical', 'To speed up the GPU', 'To change the labels'], ex: 'Shuffling turns each batch back into a random sample, which is what makes the gradient estimate unbiased.' },
       ],
       cards: [
-        { id: 'opt-unbiased', front: 'Why can SGD work even though mini-batch gradients are noisy?', back: 'Properly sampled, they are unbiased estimates of the full gradient: the expected direction is right.' },
-        { id: 'opt-sgd-hook', front: 'SGD in one line?', back: 'Noisy direction, right direction on average.' },
-        { id: 'opt-weird-batch', front: 'A weird batch vs systematically weird batching?', back: 'Variance vs bias.' },
-        { id: 'opt-shuffle', front: 'Why shuffle?', back: 'So the data’s order doesn’t keep producing correlated or unrepresentative batches.' },
+        { id: 'opt-unbiased', front: 'Why can noisy mini-batch gradients still work?', back: 'On average they point the right way.' },
+        { id: 'opt-sgd-hook', front: 'What is a single mini-batch gradient?', back: 'A noisy estimate of the full gradient.' },
+        { id: 'opt-weird-batch', front: 'One odd random batch: bias or variance?', back: 'Variance.' },
+        { id: 'opt-shuffle', front: 'Why shuffle the training data?', back: 'So batches stay random samples, not a fixed order.' },
       ],
     },
     {
@@ -206,10 +206,10 @@ export default {
         { t: 'match', q: 'Match each side of the tradeoff.', p: [['Bigger batch', 'Fewer, cleaner, costlier updates'], ['Smaller batch', 'More, noisier, cheaper updates'], ['N / batch size', 'Updates per epoch'], ['Scaling LR with batch', 'A heuristic, not a law']], ex: 'Multiply the batch size and you get fewer, cleaner updates.' },
       ],
       cards: [
-        { id: 'opt-noise-batch', front: 'What happens to gradient noise as batch size increases?', back: 'It decreases.' },
-        { id: 'opt-batch-hook', front: 'Bigger batch → ?', back: 'Fewer, cleaner updates.' },
-        { id: 'opt-updates', front: 'Updates per epoch?', back: 'About N / batch size: bigger batches, fewer updates.' },
-        { id: 'opt-lr-batch', front: 'Larger learning rate with larger batch: rule or heuristic?', back: 'A useful heuristic, not a universal law.' },
+        { id: 'opt-noise-batch', front: 'Bigger batch: more or less gradient noise?', back: 'Less.' },
+        { id: 'opt-batch-hook', front: 'Bigger batch: more or fewer updates per epoch?', back: 'Fewer.' },
+        { id: 'opt-updates', front: 'What is an epoch?', back: 'One pass over the whole training set.' },
+        { id: 'opt-lr-batch', front: 'Scaling the learning rate with batch size: rule or heuristic?', back: 'A heuristic.' },
       ],
     },
     {
@@ -226,10 +226,10 @@ export default {
         { t: 'explain', kind: 'defend', secs: 45, q: 'Why can SGD work on non-convex neural networks?', model: '<p>Neural-network losses are non-convex, so SGD has no guarantee of finding a global optimum. But mini-batches give cheap, noisy, unbiased estimates of the full gradient, which allows frequent updates. That stochasticity also helps move through saddle points and flat regions. Over-parameterized networks have many good low-loss solutions, and the real objective is a model that generalizes, not one with the absolute minimum training loss.</p>', rubric: ['Non-convex: no guarantee of a global optimum', 'Mini-batch gradients are cheap, noisy, unbiased estimates, so updates are frequent', 'Noise helps escape saddle points and flat regions', 'Many good low-loss solutions exist', 'The goal is generalization, not minimum training loss'] },
       ],
       cards: [
-        { id: 'opt-noise-helps', front: 'Why can SGD noise help optimization?', back: 'It perturbs the parameters away from saddle points and flat regions.' },
-        { id: 'opt-saddle', front: 'Saddle point in one line?', back: 'Zero slope, but downhill still exists.' },
-        { id: 'opt-train-loss', front: 'Why not just prefer the model with the lowest training loss?', back: 'Training loss is a proxy; we care about generalization to unseen data.' },
-        { id: 'opt-sgd-interview', kind: 'defend', secs: 45, front: 'Why can SGD work on non-convex neural networks?', back: 'No convex guarantee, but cheap, unbiased, noisy gradients allow frequent updates; noise escapes saddles and flat regions; many good solutions exist; the goal is generalization.', rubric: ['No global-optimum guarantee', 'Cheap, unbiased, noisy gradients', 'Noise escapes saddles and flat regions', 'Generalization is the goal'] },
+        { id: 'opt-noise-helps', front: 'How can SGD noise help?', back: 'It nudges the weights off saddle points and flat regions.' },
+        { id: 'opt-saddle', front: 'What is a saddle point?', back: 'Zero slope, but downhill still exists.' },
+        { id: 'opt-train-loss', front: 'Is the lowest training loss always the best model?', back: 'No: generalization is the goal.' },
+        { id: 'opt-sgd-interview', front: 'Does a big network need the one global minimum?', back: 'No: it has many good solutions.' },
       ],
     },
     {
@@ -248,10 +248,10 @@ export default {
       ],
       cards: [
         { id: 'opt-diag-var', front: 'Low training error, high validation error?', back: 'High variance (overfitting).' },
-        { id: 'opt-diag-bias', front: 'High training error, high validation error?', back: 'High bias (underfitting).' },
-        { id: 'opt-fix-var', front: 'Variance → ?', back: 'Make memorization harder: weight decay, dropout, early stopping, smaller model, more data, augmentation.' },
-        { id: 'opt-fix-bias', front: 'Bias → ?', back: 'Make fitting easier: more capacity, train longer, less regularization, better features or architecture.' },
-        { id: 'opt-healthy', front: 'What does a healthy train/validation pattern look like?', back: 'Low training error, slightly higher but still good validation error.' },
+        { id: 'opt-diag-bias', front: 'High training error and high validation error?', back: 'High bias (underfitting).' },
+        { id: 'opt-fix-var', front: 'The fix for high variance, in one phrase?', back: 'Make memorization harder.' },
+        { id: 'opt-fix-bias', front: 'The fix for high bias, in one phrase?', back: 'Make fitting easier.' },
+        { id: 'opt-healthy', front: 'Is a small train–validation gap normal?', back: 'Yes, if both errors are good.' },
       ],
     },
   ],

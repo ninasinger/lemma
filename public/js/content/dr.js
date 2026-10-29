@@ -59,10 +59,10 @@ h * mask / keep                     # elementwise, shape unchanged</pre>`,
   {t:'tf',q:`In PyTorch, <span class="m">nn.Dropout(p=0.3)</span> zeroes about 30% of activations during training.`,a:true,ex:`PyTorch and Keras use p (rate) as the drop probability. Careful when reading the original 2014 paper: there p meant the probability of <em>keeping</em> a unit.`}
  ],
  cards:[
-  { id: 'dr-def', front: `What does dropout do during training?`, back: `Zeroes each unit’s output with probability p, drawing a fresh random mask every step.` },
-  { id: 'dr-scale', front: `In inverted dropout, what are the survivors multiplied by?`, back: `1 / (1 − p), so the expected activation matches test time.` },
-  { id: 'dr-test', front: `What does dropout do at test time?`, back: `Nothing: no units are dropped and nothing is scaled. Call <code>model.eval()</code>.` },
-  { id: 'dr-p', front: `In PyTorch’s <code>nn.Dropout(p=0.3)</code>, what is p?`, back: `The drop probability: about 30% of activations are zeroed. The original 2014 paper used p for the keep probability.` },
+  { id: 'dr-def', front: 'What does dropout do during training?', back: 'Randomly zeroes units, with a new mask each step.' },
+  { id: 'dr-scale', front: 'Why scale up the units that survive dropout?', back: 'So the average activation matches test time.' },
+  { id: 'dr-test', front: 'What does dropout do at test time?', back: 'Nothing.' },
+  { id: 'dr-p', front: 'In nn.Dropout(p), what is p?', back: 'The probability of dropping a unit.' },
  ]},
  {id:'dr-2',title:'Why it works',steps:[
   {t:'learn',title:'Two ways to see it',body:`<p><b>No freeloaders.</b> A neuron can’t count on any particular partner being present, so each feature has to be useful on its own. This breaks up fragile co-adaptations.</p><p><b>A huge ensemble.</b> Each mask defines a different thinned network, and they all share weights. With n droppable neurons there are <span class="m">2ⁿ</span> of them. At test time the full network is a cheap approximation to averaging them: exact for a single linear layer, only approximate once nonlinearities are involved.</p>`},
@@ -73,10 +73,10 @@ h * mask / keep                     # elementwise, shape unchanged</pre>`,
   {t:'match',q:`Match the dropout terms.`,p:[[`p (drop rate)`,`Chance a unit is zeroed`],[`1 / (1 − p)`,`Scale for surviving units`],[`model.eval()`,`Turns dropout off`],[`Thinned network`,`One random sub-network`]],ex:`You can now read any dropout code.`}
  ],
  cards:[
-  { id: 'dr-coadapt', front: `Why does dropout help? (the co-adaptation view)`, back: `No unit can rely on a specific partner being present, so each feature has to be useful on its own.` },
-  { id: 'dr-ensemble', front: `Why does dropout help? (the ensemble view)`, back: `Each mask is a thinned network. Training averages over 2ⁿ weight-sharing sub-networks, and the full network at test time approximates their average.` },
-  { id: 'dr-eval', front: `What goes wrong if you forget <code>model.eval()</code> at inference?`, back: `Dropout stays on: predictions are random and usually worse.` },
-  { id: 'dr-rate', front: `How do you choose a dropout rate?`, back: `From validation evidence: more dropout when the model overfits (a large, growing gap), less or none when it underfits or the dataset is large relative to the model.` },
+  { id: 'dr-coadapt', front: 'Why does dropout help, in the co-adaptation view?', back: 'No unit can rely on a specific partner.' },
+  { id: 'dr-ensemble', front: 'Why does dropout help, in the ensemble view?', back: 'It trains many thinned networks that share weights.' },
+  { id: 'dr-eval', front: 'What happens if you forget model.eval() at inference?', back: 'Dropout stays on, so predictions turn random.' },
+  { id: 'dr-rate', front: 'When should you raise the dropout rate?', back: 'When the model overfits.' },
  ]},
  {id:'dr-3',title:'Dropout in NumPy',steps:[
   {t:'learn',title:'A mask with the same shape',body:`<pre class="py">h.shape                              # (32, 256): batch of 32, 256 features
@@ -99,14 +99,11 @@ h_test = h                           # test time: no mask, no scaling</pre><p>Th
   {t:'explain',kind:'derive',secs:90,q:'Derive the mean and variance of h·m/k for m ~ Bernoulli(k), then explain why matching the mean doesn’t make the whole network’s expected output match test time.',model:`<p>E[m] = k and Var[m] = k(1 − k). So E[h·m/k] = h, and Var[h·m/k] = h²·k(1 − k)/k² = h²(1 − k)/k.</p><p>That fixes each unit’s <em>mean</em>. But the next layer applies a nonlinearity f, and in general E[f(z)] ≠ f(E[z]) (Jensen’s inequality for convex or concave f). So the test-time network, which feeds f the means, is only an approximation to averaging the network’s output over masks. It is exact only where the computation is linear.</p>`,rubric:['E[m] = k and Var[m] = k(1 − k)','Mean of h·m/k is h','Variance is h²(1 − k)/k','Explains E[f(z)] ≠ f(E[z]) for nonlinear f','Concludes test-time scaling is an approximation to averaging']}
  ],
  cards:[
-  { id: 'dr-np-mask', front: `How do you build a dropout mask for activations h with keep probability k?`, back: `<code>mask = rng.random(h.shape) &lt; k</code>: same shape as h, one coin per entry.` },
-  { id: 'dr-np-apply', front: `Apply inverted dropout to h in NumPy.`, back: `<code>h * mask / keep</code>: elementwise, and the shape doesn’t change.` },
-  { id: 'dr-np-expect', front: `Why does inverted dropout divide by keep?`, back: `E[h·mask/keep] = h, so training and test activations match on average.` },
-  { id: 'dr-np-var', front: `Variance of a dropped unit h·m/k, with keep probability k?`, back: `h²(1 − k)/k. The mean stays h.` },
-  { id: 'dr-np-nonlin', front: `Why isn’t test-time dropout scaling an exact average over masks?`, back: `For a nonlinear f, E[f(z)] ≠ f(E[z]). Matching each unit’s mean doesn’t match the network’s mean output.` },
-  { id: 'dr-np-evalnograd', front: `What do <code>model.eval()</code> and <code>torch.no_grad()</code> each do?`, back: `eval(): changes layer behavior (dropout off, batch norm running stats). no_grad(): stops gradient tracking. They’re independent.` },
-  { id: 'dr-mc', front: `What is Monte Carlo dropout?`, back: `Keeping dropout on at inference on purpose, running several passes, and using their spread as an uncertainty estimate.` },
-  { id: 'dr-derive-meanvar', front: 'What does inverted dropout do to a unit’s mean and its variance?', back: 'The mean stays the same (that’s what dividing by keep is for); the variance goes up.' },
-  { id: 'dr-np-shape', front: `Does dropout change an activation’s shape?`, back: `No. It’s elementwise: the mask and the output have the same shape as the input.` },
+  { id: 'dr-np-expect', front: 'Does inverted dropout change a unit’s average?', back: 'No: dividing by the keep probability preserves it.' },
+  { id: 'dr-np-var', front: 'Does dropout add noise to activations?', back: 'Yes: their variance goes up.' },
+  { id: 'dr-np-nonlin', front: 'Is test-time scaling an exact average over dropout masks?', back: 'No, because the network is nonlinear.' },
+  { id: 'dr-np-evalnograd', front: 'Does torch.no_grad() turn dropout off?', back: 'No: only model.eval() does.' },
+  { id: 'dr-mc', front: 'What is Monte Carlo dropout?', back: 'Leaving dropout on at inference to estimate uncertainty.' },
+  { id: 'dr-np-shape', front: 'Does dropout change an activation’s shape?', back: 'No.' },
  ]}
 ]};

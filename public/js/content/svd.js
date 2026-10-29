@@ -58,10 +58,10 @@ S**2 / (n - 1)              # (d,): PCA eigenvalues</pre>`,
   {t:'match',q:`Match each part of A = UΣVᵀ.`,p:[[`Vᵀ`,`Rotates the input`],[`Σ`,`Stretches along the axes`],[`U`,`Rotates the output`],[`Rank`,`Count of non-zero σ’s`]],ex:`Rotate, stretch, rotate.`}
  ],
  cards:[
-  { id: 'svd-def', front: `What is the SVD of a matrix A?`, back: `A = U Σ Vᵀ. U and V are orthogonal (rotations, maybe with a flip); Σ is diagonal with σ₁ ≥ σ₂ ≥ … ≥ 0.` },
-  { id: 'svd-geo', front: `What does A do to the unit circle, in SVD terms?`, back: `Vᵀ rotates it, Σ stretches the axes by σ₁ and σ₂, U rotates again. The result is an ellipse with semi-axes σ₁ and σ₂.` },
-  { id: 'svd-rank', front: `How do you read the rank of A from its SVD?`, back: `Count the non-zero singular values.` },
-  { id: 'svd-exists', front: `Which matrices have an SVD?`, back: `Every matrix, of any shape. Eigendecomposition needs a square matrix and doesn’t always exist.` },
+  { id: 'svd-def', front: 'What does SVD split a matrix into?', back: 'A rotation, a stretch, and another rotation.' },
+  { id: 'svd-geo', front: 'What does a matrix turn the unit circle into?', back: 'An ellipse.' },
+  { id: 'svd-rank', front: 'How do you read a matrix’s rank from its SVD?', back: 'Count the non-zero singular values.' },
+  { id: 'svd-exists', front: 'Which matrices have an SVD?', back: 'Every matrix, of any shape.' },
  ]},
  {id:'svd-2',title:'Compression & the PCA link',steps:[
   {t:'learn',title:'Keep the big σ’s',body:`<p>An image is a matrix of pixel brightness. The SVD writes it as a sum of rank-1 layers:</p><div class="eq">A = σ₁u₁v₁ᵀ + σ₂u₂v₂ᵀ + σ₃u₃v₃ᵀ + …</div><p>Keeping only the first <b>k</b> layers gives the <b>best possible</b> rank-k approximation, measured by total squared error (the Frobenius norm) and also by the spectral norm. That’s the Eckart–Young theorem. Slide k and watch the face appear.</p>`,w:'img',wo:{k:1}},
@@ -73,10 +73,10 @@ S**2 / (n - 1)              # (d,): PCA eigenvalues</pre>`,
   {t:'tf',q:`Keeping the top k singular values gives the best rank-k approximation in total squared error (Frobenius norm).`,a:true,ex:`That is the Eckart–Young theorem. Truncated SVD is optimal, which is why PCA compression works so well.`}
  ],
  cards:[
-  { id: 'svd-trunc', front: `What is the best rank-k approximation of A, and in what sense?`, back: `Keep the top k terms: σ₁u₁v₁ᵀ + … + σₖuₖvₖᵀ. It minimizes the error in Frobenius norm (total squared error) and in spectral norm: the Eckart–Young theorem.` },
-  { id: 'svd-storage', front: `How many numbers does a rank-k approximation of an m×n matrix need?`, back: `k(m + n + 1): k columns of U, k rows of Vᵀ and k singular values.` },
-  { id: 'svd-pca', front: `Centered X = UΣVᵀ. Where are the principal directions and their variances?`, back: `The principal directions are the columns of V (rows of Vᵀ). Variance along PCᵢ = σᵢ² / (n − 1).` },
-  { id: 'svd-why', front: `Why compute PCA from the SVD of X instead of the eigenvectors of XᵀX?`, back: `Forming XᵀX squares the condition number, so small components lose precision. The SVD of X avoids that. Which solver a given library uses varies.` },
+  { id: 'svd-trunc', front: 'What is the best low-rank approximation?', back: 'Keep the largest singular values.' },
+  { id: 'svd-storage', front: 'Why does a low-rank approximation save space?', back: 'It stores a few vectors instead of the whole matrix.' },
+  { id: 'svd-pca', front: 'In the SVD of centered data, where are the principal directions?', back: 'In V.' },
+  { id: 'svd-why', front: 'Why compute PCA by SVD rather than from XᵀX?', back: 'Forming XᵀX loses precision.' },
  ]},
  {id:'svd-3',title:'SVD in NumPy',steps:[
   {t:'learn',title:'Three arrays, three shapes',body:`<pre class="py">Xc.shape                                         # (500, 20)
@@ -96,11 +96,8 @@ var = S**2 / (n - 1)             # (20,): the PCA eigenvalues, largest first</pr
   {t:'mc',q:'U has shape (500, 20) and S has shape (20,). What does <code>U * S</code> do?',o:['Scales column j of U by S[j]','Scales row j of U by S[j]','Takes a dot product','Raises an error'],ex:'Broadcasting lines up the trailing 20s, so S is reused for every row: entry [i, j] becomes U[i, j]·S[j].'}
  ],
  cards:[
-  { id: 'svd-np-shapes', front: `<code>U, S, Vt = np.linalg.svd(X, full_matrices=False)</code> for X of shape (n, d) with n &gt; d. Shapes?`, back: `U (n, d), S (d,), Vt (d, d).` },
-  { id: 'svd-np-s1d', front: `Is S from <code>np.linalg.svd</code> a matrix?`, back: `No: a 1-D array of singular values, largest first. <code>np.diag(S)</code> builds the diagonal matrix.` },
-  { id: 'svd-np-us', front: `What does <code>U * S</code> compute?`, back: `It scales column j of U by S[j] (broadcasting). Same as <code>U @ np.diag(S)</code>, but cheaper.` },
-  { id: 'svd-np-rankk', front: `Rank-k reconstruction in NumPy?`, back: `<code>U[:, :k] * S[:k] @ Vt[:k]</code>: (n, k) @ (k, d) → (n, d).` },
-  { id: 'svd-np-full', front: `What does <code>full_matrices=True</code> (the default) change?`, back: `U becomes (n, n): square, with extra columns that never meet a singular value. Use <code>full_matrices=False</code> for data.` },
-  { id: 'svd-np-order', front: `Sort order of <code>np.linalg.eigh</code> vs <code>np.linalg.svd</code>?`, back: `eigh: ascending. svd: descending (largest σ first).` },
+  { id: 'svd-np-s1d', front: 'Is S from np.linalg.svd a matrix?', back: 'No: a flat array of singular values.' },
+  { id: 'svd-np-full', front: 'What does full_matrices=True add?', back: 'Extra columns of U that never meet a singular value.' },
+  { id: 'svd-np-order', front: 'Does svd sort singular values up or down?', back: 'Down: largest first.' },
  ]}
 ]};

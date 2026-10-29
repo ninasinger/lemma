@@ -63,10 +63,10 @@ X_hat = Z @ W.T + mu             # (n, d)</pre>`,
   {t:'mc',q:`Two features: <b>income</b> in dollars (20,000–200,000) and <b>age</b> in years (18–90). Without any scaling, PC1 will point mostly along…`,o:[`income, because its numbers vary far more`,`age, because it is more informative`,`a 45° blend of the two`,`neither, since PCA ignores units`],ex:`Variance depends on units. Dollars vary by tens of thousands, years by tens, so income dominates. Standardize (z-score) features when their units differ.`}
  ],
  cards:[
-  { id: 'pca-def', front: `Which direction is PC1?`, back: `The direction along which the centered data spreads the most: the projections onto it have the largest variance.` },
-  { id: 'pca-recon', front: `Why does maximizing captured variance also minimize reconstruction error?`, back: `For each centered point, ‖x‖² = (kept)² + (thrown away)². The total is fixed, so more captured variance means less leftover error.` },
-  { id: 'pca-center', front: `Why center the data before PCA?`, back: `PCA measures spread around the mean. Without centering, PC1 tends to point at the mean instead of along the spread.` },
-  { id: 'pca-scale', front: `When should you standardize features before PCA?`, back: `When they use different units or scales. Otherwise the feature with the biggest numbers dominates PC1.` },
+  { id: 'pca-def', front: 'Which direction is PC1?', back: 'The direction of greatest spread in the data.' },
+  { id: 'pca-recon', front: 'Why does keeping more variance mean less reconstruction error?', back: 'What you don’t keep is what you lose.' },
+  { id: 'pca-center', front: 'Why center the data before PCA?', back: 'PCA measures spread around the mean.' },
+  { id: 'pca-scale', front: 'When should you standardize before PCA?', back: 'When features use different units or scales.' },
  ]},
  {id:'pca-2',title:'Components & compression',steps:[
   {t:'learn',title:'More components',body:`<p><b>PC2</b> is the direction of greatest remaining variance that is <b>perpendicular</b> to PC1. PC3 is perpendicular to both, and so on.</p><p>Formally, the PCs are the <b>eigenvectors</b> of the covariance matrix <span class="m">C = XᵀX / (n−1)</span>, and each <b>eigenvalue</b> λᵢ is the variance along PCᵢ.</p><p>The share of variance that PCᵢ explains is <span class="m">λᵢ / (λ₁ + λ₂ + …)</span>.</p>`},
@@ -77,10 +77,10 @@ X_hat = Z @ W.T + mu             # (n, d)</pre>`,
   {t:'mc',q:`Which of these is a real limitation of PCA?`,o:[`It can only find linear (straight-line) structure`,`It needs labeled data`,`It always increases the number of features`,`It only works with 2 or 3 features`],ex:`PCA is unsupervised and works in any dimension, but it only finds straight directions. Curved structure needs tools like kernel PCA, t-SNE or UMAP.`}
  ],
  cards:[
-  { id: 'pca-eig', front: `PCA takes the eigenvectors of which matrix?`, back: `The covariance matrix C = XcᵀXc / (n − 1). Eigenvectors are the principal directions; eigenvalue λᵢ is the variance along PCᵢ.` },
-  { id: 'pca-ratio', front: `What is the explained-variance ratio of PCᵢ?`, back: `λᵢ / (λ₁ + λ₂ + … + λ_d).` },
-  { id: 'pca-orth', front: `Why are principal components orthogonal?`, back: `The covariance matrix is symmetric, and symmetric matrices have an orthonormal basis of eigenvectors (automatic for distinct eigenvalues, a choice within a repeated one). So the projected features are uncorrelated.` },
-  { id: 'pca-limit', front: `What is PCA’s main limitation?`, back: `It only finds linear (straight-line) structure. Curved structure needs kernel PCA, t-SNE or UMAP.` },
+  { id: 'pca-eig', front: 'PCA uses the eigenvectors of which matrix?', back: 'The covariance matrix.' },
+  { id: 'pca-ratio', front: 'What does an eigenvalue tell you in PCA?', back: 'How much variance lies along its component.' },
+  { id: 'pca-orth', front: 'Are principal component scores correlated?', back: 'No: the components are orthogonal.' },
+  { id: 'pca-limit', front: 'What is PCA’s main limitation?', back: 'It only finds linear structure.' },
  ]},
  {id:'pca-3',title:'PCA in NumPy',steps:[
   {t:'learn',title:'The whole recipe, with shapes',body:`<p>Here is PCA on 500 samples with 20 features. Read the shape comments: they are the whole story.</p>
@@ -104,10 +104,10 @@ X_hat = Z @ W.T + mu              # (500, 20)  reconstruction</pre>`},
   {t:'mc',q:'In code, what fraction of variance do the top k components keep?',o:['<code>vals[:k].sum() / vals.sum()</code>','<code>vals[:k] / k</code>','<code>vecs[:, :k].sum()</code>','<code>W.sum() / d</code>'],ex:'Each eigenvalue is the variance along its component, so the kept share is the sum of the top k over the total.'}
  ],
  cards:[
-  { id: 'pca-np-cov', front: `X has shape (n, d). What is the shape of <code>Xc.T @ Xc / (n - 1)</code>?`, back: `(d, d): the covariance matrix, one entry per pair of features.` },
-  { id: 'pca-np-eigh', front: `After <code>vals, vecs = np.linalg.eigh(C)</code>, where is eigenvector i, and in what order?`, back: `Column <code>vecs[:, i]</code>. Eigenvalues come back in <b>ascending</b> order, so reverse them to put PC1 first.` },
-  { id: 'pca-np-proj', front: `Shapes in <code>Z = Xc @ W</code> with k components?`, back: `Xc (n, d) @ W (d, k) → Z (n, k).` },
-  { id: 'pca-np-zij', front: `In PCA, what does Z[i, j] mean?`, back: `The coordinate of sample i along principal direction j: centered sample i dotted with PC j.` },
-  { id: 'pca-np-recon', front: `How do you reconstruct X from k components?`, back: `<code>Z @ W.T + mu</code>: (n, k) @ (k, d) → (n, d), then add the mean back.` },
+  { id: 'pca-np-cov', front: 'What does one covariance entry describe?', back: 'How two features vary together.' },
+  { id: 'pca-np-eigh', front: 'In what order does eigh return eigenvalues?', back: 'Ascending, so reverse it to put PC1 first.' },
+  { id: 'pca-np-proj', front: 'What does projecting onto k components do?', back: 'Describes each sample with k numbers.' },
+  { id: 'pca-np-zij', front: 'What is a PCA score?', back: 'A sample’s coordinate along one component.' },
+  { id: 'pca-np-recon', front: 'What do you add back after reconstructing from components?', back: 'The mean.' },
  ]}
 ]};

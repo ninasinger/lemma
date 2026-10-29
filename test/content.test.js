@@ -110,6 +110,15 @@ test('flashcards are context review: none makes you compute', () => {
   for (const c of cards) assert.ok(!c.gen, `${c.id}: number drills belong in lessons, not on cards`);
 });
 
+test('each flashcard is one short, plain concept', () => {
+  for (const c of cards) {
+    assert.ok(!c.kind && !c.rubric, `${c.id}: interview prompts belong in lessons as explain steps`);
+    assert.ok(c.front.length <= 90 && c.back.length <= 90, `${c.id}: keep the question and answer to one short line`);
+    assert.doesNotMatch(c.front + c.back, /[Σ∑√‖∂←≈⁻]|<br>|<code>|<pre/, `${c.id}: no formulas, lists or code on cards`);
+    assert.ok((c.back.match(/,/g) || []).length <= 2, `${c.id}: one concept, not a list`);
+  }
+});
+
 test('an item without a generator is shown as written', () => {
   const card = cards.find((c) => !c.gen);
   assert.equal(vary(card), card);
